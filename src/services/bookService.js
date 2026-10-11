@@ -1,16 +1,19 @@
 import { sanitizeIsbn } from './barcodeScanner.js';
 
+// Global cache and pending requests map to prevent duplicate requests
+const isbnCache = new Map();
+const pendingRequests = new Map();
+let googleBooksThrottledUntil = 0;
+
 // Convert ISBN-10 to 13-digit ISBN or return clean 13-digit ISBN
 export function convertToIsbn13(isbnStr) {
   const clean = sanitizeIsbn(isbnStr);
   if (!clean) return '';
 
-  // If already 13 digits
   if (clean.length === 13) {
     return clean;
   }
 
-  // If 10 digits, convert to 13-digit format (prepend 978 and recalculate check digit)
   if (clean.length === 10) {
     const base = '978' + clean.substring(0, 9);
     let sum = 0;
@@ -25,7 +28,7 @@ export function convertToIsbn13(isbnStr) {
   return clean;
 }
 
-// Clean cataloguing punctuation from string (e.g., "Argo,", "Praha :", "[Praha] :")
+// Clean cataloguing punctuation from string (e.g., "Argo,", "Praha :")
 export function cleanPunctuation(str) {
   if (!str) return '';
   return str
@@ -34,7 +37,7 @@ export function cleanPunctuation(str) {
     .trim();
 }
 
-// Clean author name (strip birth/death years like "Josef Prokop, 1971-" -> "Josef Prokop")
+// Clean author name
 export function cleanAuthorName(authorKey) {
   if (!authorKey) return '';
   return authorKey
@@ -44,21 +47,21 @@ export function cleanAuthorName(authorKey) {
     .trim();
 }
 
-// Extract 4-digit year from string ("c2010" -> "2010", "[2025]" -> "2025")
+// Extract 4-digit year from string
 export function extractYear(dateStr) {
   if (!dateStr) return new Date().getFullYear().toString();
   const match = dateStr.match(/\d{4}/);
   return match ? match[0] : new Date().getFullYear().toString();
 }
 
-// Extract page count from physical descriptions ("218 s. : il." -> 218)
+// Extract page count
 export function extractPageCount(descStr) {
   if (!descStr) return 200;
   const match = descStr.match(/(\d+)\s*(s\.|stran|p\.)/i);
   return match ? parseInt(match[1], 10) : 200;
 }
 
-// Default mock database with realistic Czech library books for fallbacks
+// Default mock database with realistic Czech library books
 export const INITIAL_MOCK_BOOKS = [
   {
     id: 'book-9788025703670',
@@ -157,20 +160,17 @@ export const INITIAL_MOCK_BOOKS = [
   }
 ];
 
-// Parse Knihovny.cz record into normalized Book object
+// Parse Knihovny.cz record
 export function parseKnihovnyRecord(record, targetIsbn13) {
   if (!record) return null;
 
-  // Title
   const rawTitle = record.title || 'Neznámý název';
   const title = cleanPunctuation(rawTitle);
 
-  // Authors (Primary + Secondary)
   let primaryAuthors = [];
   if (record.authors?.primary) {
     primaryAuthors = Object.keys(record.authors.primary).map(cleanAuthorName).filter(Boolean);
   }
-
   let secondaryAuthors = [];
   if (record.authors?.secondary) {
     secondaryAuthors = Object.keys(record.authors.secondary).map(cleanAuthorName).filter(Boolean);
@@ -182,17 +182,11 @@ export function parseKnihovnyRecord(record, targetIsbn13) {
       ? secondaryAuthors.join(', ')
       : 'Neznámý autor';
 
-  // Publisher
   const rawPublisher = record.publishers?.[0] || 'Neznámé nakladatelství';
   const publisher = cleanPunctuation(rawPublisher);
-
-  // Year
   const year = extractYear(record.publicationDates?.[0]);
-
-  // Pages
   const pages = extractPageCount(record.physicalDescriptions?.[0]);
 
-  // ISBN
   let isbn = targetIsbn13 || '9780000000000';
   if (record.isbns && record.isbns.length > 0) {
     const matched = record.isbns.find(i => convertToIsbn13(i) === targetIsbn13);
@@ -220,94 +214,208 @@ export function parseKnihovnyRecord(record, targetIsbn13) {
     borrowedBy: null,
     dueDate: null,
     addedBy: 'Knihovny.cz API',
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    isFound: true,
+    apiSource: 'Knihovny.cz API'
   };
 }
 
-// Fetch book details from Knihovny.cz API directly from browser
-export async function fetchBookDetailsByIsbn(code) {
+// Internal implementation of ISBN search with multi-source fallback, HTTP 429 bypass, and deduplication
+async function performIsbnLookup(code) {
   const isbn13 = convertToIsbn13(code);
+  const diagnostics = [];
 
-  // Check mock database first for sample ISBNs or immediate hits
+  // Check mock database first
   const existingMock = INITIAL_MOCK_BOOKS.find(b => b.isbn === isbn13);
   if (existingMock) {
-    return { ...existingMock };
+    return {
+      ...existingMock,
+      isFound: true,
+      apiSource: 'Místní databáze',
+      diagnostics: ['Kniha nalezena v místní databázi.']
+    };
   }
 
-  // Attempt to fetch from Knihovny.cz API directly from browser
+  // 1. Google Books API
+  if (Date.now() < googleBooksThrottledUntil) {
+    diagnostics.push('Google Books API je dočasně pozastaveno z důvodu překročení limitu požadavků (HTTP 429). Byla využita záloha.');
+  } else {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const googleRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn13}`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (googleRes.status === 429) {
+        googleBooksThrottledUntil = Date.now() + 60000; // throttle Google Books for 60 seconds
+        diagnostics.push('Google Books API vrátilo HTTP 429 (Too Many Requests). Automaticky přepínám na alternativní zdroj.');
+      } else if (googleRes.ok) {
+        const data = await googleRes.json();
+        if (data.totalItems > 0 && data.items[0].volumeInfo) {
+          const info = data.items[0].volumeInfo;
+          return {
+            id: `book-${isbn13 || Date.now()}`,
+            isbn: isbn13 || code,
+            title: info.title || 'Neznámý název',
+            author: info.authors ? info.authors.join(', ') : 'Neznámý autor',
+            publisher: info.publisher || 'Neznámé nakladatelství',
+            year: info.publishedDate ? info.publishedDate.substring(0, 4) : new Date().getFullYear().toString(),
+            targetAgeGroup: info.maturityRating === 'MATURE' ? 'Dospělí (18+)' : 'Všechny věkové kategorie',
+            language: info.language === 'cs' ? 'Čeština' : info.language === 'en' ? 'Angličtina' : info.language || 'Čeština',
+            genre: info.categories ? info.categories[0] : 'Beletrie',
+            pages: info.pageCount || 200,
+            description: info.description || 'Popis knihy z veřejné databáze Google Books.',
+            coverUrl: info.imageLinks?.thumbnail || info.imageLinks?.smallThumbnail || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400&q=80',
+            isAvailable: true,
+            borrowedBy: null,
+            dueDate: null,
+            addedBy: 'Google Books API',
+            createdAt: new Date().toISOString(),
+            isFound: true,
+            apiSource: 'Google Books API',
+            diagnostics
+          };
+        } else {
+          diagnostics.push('Google Books API: Kniha nebyla v databázi nalezena.');
+        }
+      } else {
+        diagnostics.push(`Google Books API nebylo dostupné (HTTP ${googleRes.status}).`);
+      }
+    } catch (err) {
+      diagnostics.push('Google Books API selhalo nebo vypršel časový limit.');
+    }
+  }
+
+  // 2. Open Library API
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const olRes = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn13}&format=json&jscmd=data`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (olRes.ok) {
+      const data = await olRes.json();
+      const bookKey = `ISBN:${isbn13}`;
+      if (data[bookKey]) {
+        const info = data[bookKey];
+        return {
+          id: `book-${isbn13 || Date.now()}`,
+          isbn: isbn13 || code,
+          title: info.title || 'Neznámý název',
+          author: info.authors ? info.authors.map(a => a.name).join(', ') : 'Neznámý autor',
+          publisher: info.publishers ? info.publishers.map(p => p.name).join(', ') : 'Neznámé nakladatelství',
+          year: info.publish_date ? info.publish_date.slice(-4) : new Date().getFullYear().toString(),
+          targetAgeGroup: 'Mládež a dospělí',
+          language: 'Čeština',
+          genre: info.subjects ? info.subjects[0].name : 'Všeobecná literatura',
+          pages: info.number_of_pages || 180,
+          description: 'Informace získány z databáze Open Library.',
+          coverUrl: info.cover?.large || info.cover?.medium || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80',
+          isAvailable: true,
+          borrowedBy: null,
+          dueDate: null,
+          addedBy: 'Open Library API',
+          createdAt: new Date().toISOString(),
+          isFound: true,
+          apiSource: 'Open Library API',
+          diagnostics
+        };
+      } else {
+        diagnostics.push('Open Library API: Kniha nebyla v databázi nalezena.');
+      }
+    } else {
+      diagnostics.push(`Open Library API nebylo dostupné (HTTP ${olRes.status}).`);
+    }
+  } catch (err) {
+    diagnostics.push('Open Library API selhalo nebo vypršel časový limit.');
+  }
+
+  // 3. Knihovny.cz API
   const API_FIELDS = [
-    'id',
-    'title',
-    'authors',
-    'publishers',
-    'placesOfPublication',
-    'publicationDates',
-    'physicalDescriptions',
-    'isbns',
-    'issns',
-    'cnb',
-    'formats'
+    'id', 'title', 'authors', 'publishers', 'placesOfPublication',
+    'publicationDates', 'physicalDescriptions', 'isbns', 'issns', 'cnb', 'formats'
   ];
-
-  const params = new URLSearchParams({
-    lookfor: isbn13,
-    type: 'ISN',
-    limit: '10'
-  });
-
-  for (const f of API_FIELDS) {
-    params.append('field[]', f);
-  }
-
-  const url = 'https://www.knihovny.cz/api/v1/search?' + params.toString();
+  const params = new URLSearchParams({ lookfor: isbn13, type: 'ISN', limit: '10' });
+  for (const f of API_FIELDS) params.append('field[]', f);
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-    const response = await fetch(url, { signal: controller.signal });
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const kniRes = await fetch('https://www.knihovny.cz/api/v1/search?' + params.toString(), { signal: controller.signal });
     clearTimeout(timeoutId);
 
-    if (response.ok) {
-      const data = await response.json();
+    if (kniRes.ok) {
+      const data = await kniRes.json();
       const records = data.records ?? [];
-
       if (records.length > 0) {
-        // Find record whose isbns array actually contains searched 13-digit ISBN
         const matchingRecord = records.find(r =>
           Array.isArray(r.isbns) && r.isbns.some(i => convertToIsbn13(i) === isbn13)
         );
-
-        if (matchingRecord) {
-          return parseKnihovnyRecord(matchingRecord, isbn13);
-        } else {
-          // If none explicitly matched, take the first record if records exist
-          return parseKnihovnyRecord(records[0], isbn13);
+        const recordToUse = matchingRecord || records[0];
+        const parsed = parseKnihovnyRecord(recordToUse, isbn13);
+        if (parsed) {
+          return {
+            ...parsed,
+            diagnostics
+          };
         }
+      } else {
+        diagnostics.push('Knihovny.cz API: Kniha nebyla v databázi nalezena.');
       }
+    } else {
+      diagnostics.push(`Knihovny.cz API nebylo dostupné (HTTP ${kniRes.status}).`);
     }
   } catch (err) {
-    console.warn('Knihovny.cz API fetch attempt ended (network or timeout):', err);
+    diagnostics.push('Knihovny.cz API selhalo nebo vypršel časový limit.');
   }
 
-  // Fallback for unlisted / offline barcodes
+  // If no API found real metadata, explicitly mark as NOT found so app does NOT present generic record as successful match
   return {
     id: `book-${isbn13 || Date.now()}`,
-    isbn: isbn13 || '9780000000000',
-    title: `Naskenovaná kniha (Kód: ${isbn13 || code})`,
-    author: 'Nespecifikovaný autor',
-    publisher: 'České nakladatelství',
+    isbn: isbn13 || code || '9780000000000',
+    title: '',
+    author: '',
+    publisher: '',
     year: new Date().getFullYear().toString(),
     targetAgeGroup: 'Pro všechny čtenáře',
     language: 'Čeština',
     genre: 'Beletrie',
     pages: 200,
-    description: 'Detailní parametry knihy můžete před uložením upravit.',
+    description: '',
     coverUrl: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&q=80',
     isAvailable: true,
     borrowedBy: null,
     dueDate: null,
-    addedBy: 'Scanner',
-    createdAt: new Date().toISOString()
+    addedBy: 'Ruční vložení',
+    createdAt: new Date().toISOString(),
+    isFound: false,
+    diagnostics
   };
+}
+
+// Public fetchBookDetailsByIsbn with request deduplication and result caching
+export async function fetchBookDetailsByIsbn(code) {
+  const isbn13 = convertToIsbn13(code);
+
+  if (isbnCache.has(isbn13)) {
+    return isbnCache.get(isbn13);
+  }
+
+  if (pendingRequests.has(isbn13)) {
+    return pendingRequests.get(isbn13);
+  }
+
+  const promise = performIsbnLookup(code)
+    .then((result) => {
+      isbnCache.set(isbn13, result);
+      pendingRequests.delete(isbn13);
+      return result;
+    })
+    .catch((err) => {
+      pendingRequests.delete(isbn13);
+      throw err;
+    });
+
+  pendingRequests.set(isbn13, promise);
+  return promise;
 }

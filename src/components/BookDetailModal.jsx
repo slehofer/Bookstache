@@ -1,12 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { BookOpen, CheckCircle, PlusCircle, Bookmark, X, Edit3, Image as ImageIcon, Barcode, Calendar, User, Building, Tag, Globe, Users } from 'lucide-react';
+import {
+  BookOpen,
+  CheckCircle,
+  PlusCircle,
+  Bookmark,
+  X,
+  Edit3,
+  Image as ImageIcon,
+  Barcode,
+  Calendar,
+  User,
+  Building,
+  Tag,
+  Globe,
+  Users,
+  AlertCircle,
+  Info
+} from 'lucide-react';
 
 export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
   const { currentUser, addBookToPublicCatalog, addBookToReaderCollection } = useApp();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(book || {});
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    if (book) {
+      setFormData(book);
+      // Auto-enable edit mode if book details were not found automatically
+      if (!book.isFound) {
+        setIsEditing(true);
+      } else {
+        setIsEditing(false);
+      }
+    }
+  }, [book]);
 
   if (!isOpen || !book) return null;
 
@@ -18,7 +47,20 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
 
   const handleSaveBook = (e) => {
     e.preventDefault();
-    const finalBook = { ...book, ...formData };
+
+    // Do not allow saving empty title/author
+    if (!formData.title?.trim() || !formData.author?.trim()) {
+      alert('Prosím vyplňte název knihy a autora.');
+      return;
+    }
+
+    const finalBook = {
+      ...book,
+      ...formData,
+      title: formData.title.trim(),
+      author: formData.author.trim(),
+      isFound: true // User confirmed/edited the details
+    };
 
     if (isLibrarian) {
       addBookToPublicCatalog(finalBook);
@@ -45,8 +87,12 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
               <BookOpen className="w-6 h-6 text-amber-100" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">Naskenovaná kniha</h2>
-              <p className="text-xs text-amber-100">Detailní informace získané z čárového / ISBN kódu</p>
+              <h2 className="text-xl font-bold">
+                {book.isFound ? 'Nalezená kniha' : 'Kniha nenalezena v databázích'}
+              </h2>
+              <p className="text-xs text-amber-100">
+                {book.apiSource ? `Zdroj dat: ${book.apiSource}` : 'Můžete ručně doplnit potřebné údaje'}
+              </p>
             </div>
           </div>
           <button
@@ -57,6 +103,31 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
             <X className="w-6 h-6" />
           </button>
         </div>
+
+        {/* Diagnostics banner */}
+        {book.diagnostics && book.diagnostics.length > 0 && (
+          <div className="bg-amber-50 border-b border-amber-200 p-3 px-6 text-xs text-amber-900 flex items-start gap-2">
+            <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">Diagnostické informace vyhledače:</p>
+              <ul className="list-disc list-inside space-y-0.5 mt-0.5 text-amber-800">
+                {book.diagnostics.map((diag, idx) => (
+                  <li key={idx}>{diag}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Not Found Warning Banner */}
+        {!book.isFound && (
+          <div className="bg-orange-100 border-b border-orange-200 p-3 px-6 text-xs text-orange-900 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-orange-600 shrink-0" />
+            <p className="font-semibold">
+              Kniha s tímto ISBN nebyla automaticky nalezena. Prosím doplňte název a autora ručně.
+            </p>
+          </div>
+        )}
 
         {/* Saved Toast Overlay */}
         {saveSuccess ? (
@@ -78,7 +149,7 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
                 <div className="w-44 h-64 rounded-xl shadow-lg border border-stone-200 overflow-hidden relative group bg-stone-100 mb-3">
                   <img
                     src={formData.coverUrl || book.coverUrl}
-                    alt={formData.title || book.title}
+                    alt={formData.title || book.title || 'Obálka knihy'}
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       e.target.src = 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80';
@@ -97,13 +168,13 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
                 <div className="w-full bg-amber-50/80 border border-amber-200 p-3 rounded-xl text-xs space-y-2">
                   <div className="flex items-center justify-between text-stone-600">
                     <span className="font-semibold flex items-center gap-1">
-                      <Barcode className="w-3.5 h-3.5 text-orange-600" /> ISBN / Barcode:
+                      <Barcode className="w-3.5 h-3.5 text-orange-600" /> ISBN:
                     </span>
                     <span className="font-mono font-bold text-stone-800">{book.isbn}</span>
                   </div>
                   <div className="flex items-center justify-between text-stone-600">
                     <span className="font-semibold flex items-center gap-1">
-                      <Tag className="w-3.5 h-3.5 text-emerald-600" /> Cílový režim:
+                      <Tag className="w-3.5 h-3.5 text-emerald-600" /> Režim:
                     </span>
                     <span className="font-bold text-emerald-800">
                       {isLibrarian ? 'Veřejný katalog' : 'Moje osobní knihovna'}
@@ -127,34 +198,36 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
                 {/* Title & Author */}
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase">Název knihy</label>
+                    <label className="block text-xs font-bold text-stone-500 uppercase">Název knihy *</label>
                     {isEditing ? (
                       <input
                         type="text"
                         required
-                        value={formData.title ?? book.title}
+                        placeholder="Zadejte název knihy"
+                        value={formData.title ?? ''}
                         onChange={(e) => handleChange('title', e.target.value)}
                         className="w-full mt-1 p-2 border border-stone-300 rounded-lg text-base font-bold focus:ring-2 focus:ring-orange-500"
                       />
                     ) : (
-                      <h3 className="text-2xl font-black text-stone-900">{formData.title ?? book.title}</h3>
+                      <h3 className="text-2xl font-black text-stone-900">{formData.title || 'Bez názvu'}</h3>
                     )}
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-stone-500 uppercase flex items-center gap-1">
-                      <User className="w-3.5 h-3.5 text-orange-600" /> Autor / Autorka
+                      <User className="w-3.5 h-3.5 text-orange-600" /> Autor / Autorka *
                     </label>
                     {isEditing ? (
                       <input
                         type="text"
                         required
-                        value={formData.author ?? book.author}
+                        placeholder="Zadejte jméno autora"
+                        value={formData.author ?? ''}
                         onChange={(e) => handleChange('author', e.target.value)}
                         className="w-full mt-1 p-2 border border-stone-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-orange-500"
                       />
                     ) : (
-                      <p className="text-base font-semibold text-stone-800">{formData.author ?? book.author}</p>
+                      <p className="text-base font-semibold text-stone-800">{formData.author || 'Neznámý autor'}</p>
                     )}
                   </div>
                 </div>
@@ -170,12 +243,12 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
                     {isEditing ? (
                       <input
                         type="text"
-                        value={formData.publisher ?? book.publisher}
+                        value={formData.publisher ?? ''}
                         onChange={(e) => handleChange('publisher', e.target.value)}
-                        className="w-full p-1.5 border border-stone-300 rounded-md text-xs"
+                        className="w-full p-1.5 border border-stone-300 rounded-md text-xs bg-white"
                       />
                     ) : (
-                      <span className="font-semibold text-stone-800">{formData.publisher ?? book.publisher}</span>
+                      <span className="font-semibold text-stone-800">{formData.publisher || 'Neuvedeno'}</span>
                     )}
                   </div>
 
@@ -187,12 +260,12 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
                     {isEditing ? (
                       <input
                         type="text"
-                        value={formData.year ?? book.year}
+                        value={formData.year ?? ''}
                         onChange={(e) => handleChange('year', e.target.value)}
-                        className="w-full p-1.5 border border-stone-300 rounded-md text-xs"
+                        className="w-full p-1.5 border border-stone-300 rounded-md text-xs bg-white"
                       />
                     ) : (
-                      <span className="font-semibold text-stone-800">{formData.year ?? book.year}</span>
+                      <span className="font-semibold text-stone-800">{formData.year || 'Neuvedeno'}</span>
                     )}
                   </div>
 
@@ -203,7 +276,7 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
                     </label>
                     {isEditing ? (
                       <select
-                        value={formData.targetAgeGroup ?? book.targetAgeGroup}
+                        value={formData.targetAgeGroup ?? 'Pro všechny čtenáře'}
                         onChange={(e) => handleChange('targetAgeGroup', e.target.value)}
                         className="w-full p-1.5 border border-stone-300 rounded-md text-xs bg-white"
                       >
@@ -215,7 +288,7 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
                       </select>
                     ) : (
                       <span className="inline-block px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-xs rounded-full border border-emerald-200">
-                        {formData.targetAgeGroup ?? book.targetAgeGroup}
+                        {formData.targetAgeGroup || 'Pro všechny čtenáře'}
                       </span>
                     )}
                   </div>
@@ -228,12 +301,12 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
                     {isEditing ? (
                       <input
                         type="text"
-                        value={formData.language ?? book.language}
+                        value={formData.language ?? 'Čeština'}
                         onChange={(e) => handleChange('language', e.target.value)}
-                        className="w-full p-1.5 border border-stone-300 rounded-md text-xs"
+                        className="w-full p-1.5 border border-stone-300 rounded-md text-xs bg-white"
                       />
                     ) : (
-                      <span className="font-semibold text-stone-800">{formData.language ?? book.language}</span>
+                      <span className="font-semibold text-stone-800">{formData.language || 'Čeština'}</span>
                     )}
                   </div>
 
@@ -245,13 +318,13 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
                     {isEditing ? (
                       <input
                         type="text"
-                        value={formData.genre ?? book.genre}
+                        value={formData.genre ?? 'Beletrie'}
                         onChange={(e) => handleChange('genre', e.target.value)}
-                        className="w-full p-1.5 border border-stone-300 rounded-md text-xs"
+                        className="w-full p-1.5 border border-stone-300 rounded-md text-xs bg-white"
                       />
                     ) : (
                       <span className="font-semibold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md text-xs border border-amber-300">
-                        {formData.genre ?? book.genre}
+                        {formData.genre || 'Beletrie'}
                       </span>
                     )}
                   </div>
@@ -264,13 +337,13 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
                   {isEditing ? (
                     <textarea
                       rows={3}
-                      value={formData.description ?? book.description}
+                      value={formData.description ?? ''}
                       onChange={(e) => handleChange('description', e.target.value)}
                       className="w-full p-2 border border-stone-300 rounded-lg text-xs leading-relaxed focus:ring-2 focus:ring-orange-500"
                     />
                   ) : (
                     <p className="text-xs text-stone-600 leading-relaxed bg-white p-3 rounded-lg border border-stone-200">
-                      {formData.description ?? book.description}
+                      {formData.description || 'Bez popisu.'}
                     </p>
                   )}
                 </div>
@@ -280,7 +353,7 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
                     <label className="block text-xs font-bold text-stone-500 uppercase mb-1">URL Obálky</label>
                     <input
                       type="text"
-                      value={formData.coverUrl ?? book.coverUrl}
+                      value={formData.coverUrl ?? ''}
                       onChange={(e) => handleChange('coverUrl', e.target.value)}
                       className="w-full p-2 border border-stone-300 rounded-lg text-xs focus:ring-2 focus:ring-orange-500"
                     />
