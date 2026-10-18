@@ -1,9 +1,42 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { HandHeart, CheckCircle, AlertTriangle, RotateCcw, Clock } from 'lucide-react';
+import { HandHeart, CheckCircle, AlertTriangle, RotateCcw, Clock, Download } from 'lucide-react';
 
 export default function LoansView() {
   const { loans, returnBook } = useApp();
+
+  const handleExportLoansCSV = () => {
+    if (loans.length === 0) return;
+
+    const headers = [
+      'ID výpůjčky',
+      'Kniha',
+      'Vypůjčitel',
+      'E-mail',
+      'Datum vypůjčení',
+      'Termín vrácení',
+      'Stav'
+    ];
+
+    const rows = loans.map((l) => [
+      `"${l.id || ''}"`,
+      `"${l.bookTitle || ''}"`,
+      `"${l.borrowerName || ''}"`,
+      `"${l.borrowerEmail || ''}"`,
+      `"${l.borrowedDate || ''}"`,
+      `"${l.dueDate || ''}"`,
+      `"${l.returned ? 'Vráceno' : 'Aktivní'}"`
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(';'), ...rows.map((e) => e.join(';'))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `vypujcky_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const activeLoans = loans.filter((l) => !l.returned);
   const returnedLoans = loans.filter((l) => l.returned);
@@ -19,7 +52,7 @@ export default function LoansView() {
     <div className="space-y-6">
 
       {/* Loans Header */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-6 rounded-2xl text-white shadow-lg flex items-center justify-between">
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-6 rounded-2xl text-white shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full text-xs font-bold text-emerald-100 mb-2">
             <HandHeart className="w-4 h-4" /> Správa knižních výpůjček
@@ -29,6 +62,15 @@ export default function LoansView() {
             Evidence výpůjček pro knihovníky s možností vrácení knihy jedním kliknutím
           </p>
         </div>
+
+        <button
+          onClick={handleExportLoansCSV}
+          disabled={loans.length === 0}
+          className="px-4 py-2 bg-white text-emerald-800 hover:bg-emerald-50 disabled:opacity-50 rounded-xl font-bold text-xs shadow-md flex items-center gap-1.5 transition-colors shrink-0"
+          title="Stáhnout výpůjčky v CSV"
+        >
+          <Download className="w-4 h-4 text-emerald-700" /> Exportovat výpůjčky CSV
+        </button>
       </div>
 
       {/* Active Loans Section */}

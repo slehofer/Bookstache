@@ -16,7 +16,8 @@ import {
   Globe,
   Users,
   AlertCircle,
-  Info
+  Info,
+  Download
 } from 'lucide-react';
 
 export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
@@ -43,6 +44,30 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleDownloadSingleBook = () => {
+    const dataToExport = {
+      isbn: formData.isbn || book.isbn,
+      title: formData.title || book.title,
+      author: formData.author || book.author,
+      publisher: formData.publisher || book.publisher,
+      year: formData.year || book.year,
+      targetAgeGroup: formData.targetAgeGroup || book.targetAgeGroup,
+      language: formData.language || book.language,
+      genre: formData.genre || book.genre,
+      description: formData.description || book.description,
+      isAvailable: formData.isAvailable ?? book.isAvailable ?? true,
+      exportedAt: new Date().toISOString()
+    };
+
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
+    const link = document.createElement('a');
+    link.setAttribute('href', dataStr);
+    link.setAttribute('download', `kniha_${dataToExport.isbn || 'detail'}.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleSaveBook = (e) => {
@@ -182,14 +207,25 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(!isEditing)}
-                  className="mt-3 text-xs font-semibold text-orange-700 hover:text-orange-800 bg-orange-100/70 hover:bg-orange-100 px-3 py-1.5 rounded-lg border border-orange-200 flex items-center gap-1.5 transition-colors"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  {isEditing ? 'Ukončit úpravy' : 'Upravit zobrazené údaje'}
-                </button>
+                <div className="flex gap-2 mt-3 w-full">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(!isEditing)}
+                    className="flex-1 text-xs font-semibold text-orange-700 hover:text-orange-800 bg-orange-100/70 hover:bg-orange-100 px-2.5 py-1.5 rounded-lg border border-orange-200 flex items-center justify-center gap-1 transition-colors"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    {isEditing ? 'Ukončit' : 'Upravit'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadSingleBook}
+                    className="flex-1 text-xs font-semibold text-emerald-800 hover:text-emerald-900 bg-emerald-100/80 hover:bg-emerald-200/80 px-2.5 py-1.5 rounded-lg border border-emerald-300 flex items-center justify-center gap-1 transition-colors"
+                    title="Stáhnout detail knihy v JSON"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Stáhnout
+                  </button>
+                </div>
               </div>
 
               {/* Book Details Table / Editable Fields */}

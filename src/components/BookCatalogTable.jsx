@@ -110,53 +110,91 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
     }
   };
 
-  // Export Table Data to CSV
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+
+  // Export Table Data to CSV / Excel
   const handleExportCSV = () => {
-    if (filteredBooks.length === 0) return;
+    if (filteredBooks.length === 0) {
+      setExportError('Seznam knih k exportu je prázdný.');
+      setTimeout(() => setExportError(''), 3000);
+      return;
+    }
 
-    const headers = [
-      'ISBN',
-      'Název',
-      'Autor',
-      'Nakladatelství',
-      'Rok vydání',
-      'Cílová skupina',
-      'Jazyk',
-      'Žánr',
-      'Stav'
-    ];
+    try {
+      setIsExporting(true);
+      setExportError('');
 
-    const rows = filteredBooks.map((b) => [
-      `"${b.isbn || ''}"`,
-      `"${b.title || ''}"`,
-      `"${b.author || ''}"`,
-      `"${b.publisher || ''}"`,
-      `"${b.year || ''}"`,
-      `"${b.targetAgeGroup || ''}"`,
-      `"${b.language || ''}"`,
-      `"${b.genre || ''}"`,
-      `"${b.isAvailable ? 'Dostupná' : 'Vypůjčená'}"`
-    ]);
+      const headers = [
+        'ISBN',
+        'Název',
+        'Autor',
+        'Nakladatelství',
+        'Rok vydání',
+        'Cílová skupina',
+        'Jazyk',
+        'Žánr',
+        'Stav dostupnosti'
+      ];
 
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(';'), ...rows.map((e) => e.join(';'))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `knihy_export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const rows = filteredBooks.map((b) => [
+        `"${(b.isbn || '').replace(/"/g, '""')}"`,
+        `"${(b.title || '').replace(/"/g, '""')}"`,
+        `"${(b.author || '').replace(/"/g, '""')}"`,
+        `"${(b.publisher || '').replace(/"/g, '""')}"`,
+        `"${(b.year || '').replace(/"/g, '""')}"`,
+        `"${(b.targetAgeGroup || '').replace(/"/g, '""')}"`,
+        `"${(b.language || '').replace(/"/g, '""')}"`,
+        `"${(b.genre || '').replace(/"/g, '""')}"`,
+        `"${b.isAvailable ? 'Dostupná' : 'Vypůjčená'}"`
+      ]);
+
+      const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map((e) => e.join(';'))].join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `knihy_katalog_export_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Chyba při vygenerování CSV exportu:', err);
+      setExportError('Nepodařilo se vygenerovat CSV soubor.');
+    } finally {
+      setTimeout(() => setIsExporting(false), 500);
+    }
   };
 
   // Export Table Data to JSON
   const handleExportJSON = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(filteredBooks, null, 2));
-    const link = document.createElement('a');
-    link.setAttribute('href', dataStr);
-    link.setAttribute('download', `knihy_export_${new Date().toISOString().split('T')[0]}.json`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (filteredBooks.length === 0) {
+      setExportError('Seznam knih k exportu je prázdný.');
+      setTimeout(() => setExportError(''), 3000);
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      setExportError('');
+
+      const dataStr = JSON.stringify(filteredBooks, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `knihy_katalog_export_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Chyba při vygenerování JSON exportu:', err);
+      setExportError('Nepodařilo se vygenerovat JSON soubor.');
+    } finally {
+      setTimeout(() => setIsExporting(false), 500);
+    }
   };
 
   const handleConfirmBorrow = (e) => {
@@ -184,20 +222,27 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
+          {exportError && (
+            <span className="text-xs text-red-600 font-bold self-center mr-2">
+              {exportError}
+            </span>
+          )}
           <button
             onClick={handleExportCSV}
-            className="flex-1 md:flex-none px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors"
+            disabled={isExporting || filteredBooks.length === 0}
+            className="flex-1 md:flex-none px-4 py-2 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors"
             title="Stáhnout tabulku v CSV"
           >
-            <Download className="w-4 h-4" /> Export CSV
+            <Download className="w-4 h-4" /> {isExporting ? 'Generuji CSV...' : 'Export CSV'}
           </button>
           <button
             onClick={handleExportJSON}
-            className="flex-1 md:flex-none px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors"
+            disabled={isExporting || filteredBooks.length === 0}
+            className="flex-1 md:flex-none px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors"
             title="Stáhnout v JSON"
           >
-            <Download className="w-4 h-4" /> Export JSON
+            <Download className="w-4 h-4" /> {isExporting ? 'Generuji JSON...' : 'Export JSON'}
           </button>
         </div>
       </div>

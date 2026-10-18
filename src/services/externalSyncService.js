@@ -42,26 +42,30 @@ export function exportBookToExternalCsvFile(book) {
   document.body.removeChild(link);
 }
 
-// Send saved book to an external Webhook or online Google Sheets script endpoint
+// Send saved book to an external Webhook or online Google Sheets Apps Script endpoint
 export async function sendBookToExternalEndpoint(endpointUrl, book, role) {
-  if (!endpointUrl || !endpointUrl.trim() || !book) return false;
+  if (!endpointUrl || !endpointUrl.trim() || !book) {
+    return { success: false, error: 'Chybí URL adresa Webhooku / Google Apps Scriptu nebo data knihy.' };
+  }
 
   const payload = {
-    event: 'book_added',
+    event: 'sync_book',
     timestamp: new Date().toISOString(),
     userRole: role || 'unknown',
     book: {
-      isbn: book.isbn,
-      title: book.title,
-      author: book.author,
-      publisher: book.publisher,
-      year: book.year,
-      targetAgeGroup: book.targetAgeGroup,
-      language: book.language,
-      genre: book.genre,
-      pages: book.pages,
-      description: book.description,
-      addedBy: book.addedBy || role
+      id: book.id || `book-${book.isbn || Date.now()}`,
+      isbn: book.isbn || '',
+      barcode: book.barcode || book.isbn || '',
+      title: book.title || '',
+      author: book.author || '',
+      publisher: book.publisher || '',
+      year: book.year || '',
+      language: book.language || 'Čeština',
+      genre: book.genre || '',
+      targetAgeGroup: book.targetAgeGroup || '',
+      availabilityStatus: book.isAvailable ? 'Dostupná' : 'Vypůjčená',
+      addedDate: book.addedDate || new Date().toISOString().split('T')[0],
+      description: book.description || ''
     }
   };
 
@@ -69,13 +73,18 @@ export async function sendBookToExternalEndpoint(endpointUrl, book, role) {
     const response = await fetch(endpointUrl.trim(), {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'text/plain;charset=utf-8' // Compatible with Google Apps Script CORS
       },
       body: JSON.stringify(payload)
     });
-    return response.ok;
+
+    if (response.ok || response.type === 'opaque') {
+      return { success: true };
+    } else {
+      return { success: false, error: `HTTP chyba ${response.status}: ${response.statusText}` };
+    }
   } catch (err) {
-    console.warn('Nepodařilo se odeslat záznam na externí Webhook:', err);
-    return false;
+    console.warn('Nepodařilo se odeslat záznam do Google Sheets / Webhooku:', err);
+    return { success: false, error: err.message || 'Chyba při komunikaci s Webhookem' };
   }
 }

@@ -1,18 +1,50 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Database, Link, Check, FileSpreadsheet, Settings } from 'lucide-react';
+import { Database, Link, Check, FileSpreadsheet, Settings, Send, AlertTriangle, Info, Code } from 'lucide-react';
+import { sendBookToExternalEndpoint } from '../services/externalSyncService';
 
 export default function ExternalSyncConfigBanner() {
-  const { externalWebhookUrl, setExternalWebhookUrl, autoExportCsv, setAutoExportCsv } = useApp();
+  const { externalWebhookUrl, setExternalWebhookUrl, autoExportCsv, setAutoExportCsv, publicCatalog } = useApp();
   const [isOpen, setIsOpen] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const [tempUrl, setTempUrl] = useState(externalWebhookUrl);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [testStatus, setTestStatus] = useState(null); // null | 'testing' | { success: bool, msg: string }
 
   const handleSaveSettings = (e) => {
     e.preventDefault();
     setExternalWebhookUrl(tempUrl);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2000);
+  };
+
+  const handleTestConnection = async () => {
+    if (!tempUrl || !tempUrl.trim()) {
+      setTestStatus({ success: false, msg: 'Zadejte platnou URL adresu Google Apps Scriptu nebo Webhooku.' });
+      return;
+    }
+
+    setTestStatus('testing');
+    const sampleBook = publicCatalog[0] || {
+      id: 'test-book-1',
+      isbn: '9788025726242',
+      title: 'Testovací kniha',
+      author: 'Testovací autor',
+      publisher: 'Test Publisher',
+      year: '2025',
+      language: 'Čeština',
+      genre: 'Test',
+      targetAgeGroup: 'Pro všechny',
+      isAvailable: true,
+      addedDate: new Date().toISOString().split('T')[0]
+    };
+
+    const res = await sendBookToExternalEndpoint(tempUrl, sampleBook, 'knihovnik_test');
+    if (res.success) {
+      setTestStatus({ success: true, msg: 'Testovací záznam byl úspěšně odeslán do Google Sheets / Webhooku!' });
+    } else {
+      setTestStatus({ success: false, msg: res.error || 'Nepodařilo se navázat spojení.' });
+    }
   };
 
   return (
@@ -75,9 +107,51 @@ export default function ExternalSyncConfigBanner() {
                 type="submit"
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors flex items-center gap-1"
               >
-                {savedSuccess ? <Check className="w-4 h-4" /> : 'Uložit'}
+                {savedSuccess ? <Check className="w-4 h-4" /> : 'Uložit URL'}
+              </button>
+              <button
+                type="button"
+                onClick={handleTestConnection}
+                disabled={testStatus === 'testing'}
+                className="px-3 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-bold rounded-xl transition-colors flex items-center gap-1"
+                title="Otestovat odeslání testovacího řádku"
+              >
+                <Send className="w-3.5 h-3.5" />
+                {testStatus === 'testing' ? 'Odesílám...' : 'Test'}
               </button>
             </div>
+          </div>
+
+          {testStatus && typeof testStatus === 'object' && (
+            <div className={`p-2.5 rounded-xl text-xs flex items-center gap-2 border ${testStatus.success ? 'bg-emerald-950 border-emerald-500 text-emerald-200' : 'bg-red-950 border-red-500 text-red-200'}`}>
+              {testStatus.success ? <Check className="w-4 h-4 text-emerald-400 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />}
+              <span>{testStatus.msg}</span>
+            </div>
+          )}
+
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => setShowGuide(!showGuide)}
+              className="text-xs text-amber-300 hover:text-amber-200 underline font-semibold flex items-center gap-1"
+            >
+              <Code className="w-3.5 h-3.5" /> Jak nastavit bezplatný Google Sheets Webhook za 2 minuty
+            </button>
+
+            {showGuide && (
+              <div className="mt-3 p-3 bg-emerald-950/80 border border-emerald-700/80 rounded-xl space-y-2 text-emerald-200 text-xs leading-relaxed">
+                <p className="font-bold text-white flex items-center gap-1">
+                  <Info className="w-4 h-4 text-amber-400" /> Návod pro správce k propojení Google Tabulky:
+                </p>
+                <ol className="list-decimal list-inside space-y-1 text-emerald-300">
+                  <li>Otevřete vaši Google Tabulku (Google Sheets).</li>
+                  <li>V menu klikněte na <strong>Rozšíření &gt; Apps Script</strong>.</li>
+                  <li>Vložte kód skriptu, který zpracuje příchozí JSON z Bookstache a zapíše řádek podle <code>book.id</code> (brání duplicitám).</li>
+                  <li>Klikněte na <strong>Nasadit &gt; Nové nasazení</strong>, zvolte typ <strong>Webová aplikace</strong>, Přístup: <strong>Kdo koli (Anyone)</strong>.</li>
+                  <li>Zkopírujte vygenerované URL (končící na <code>/exec</code>) a vložte ho do pole výše.</li>
+                </ol>
+              </div>
+            )}
           </div>
         </form>
       )}
