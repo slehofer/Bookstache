@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { INITIAL_MOCK_BOOKS } from '../services/bookService';
+import { exportBookToExternalCsvFile, sendBookToExternalEndpoint } from '../services/externalSyncService';
 
 const AppContext = createContext();
 
@@ -8,7 +9,7 @@ export const DEFAULT_USERS = [
     id: 'user-librarian-1',
     username: 'knihovnik',
     name: 'Eva Procházková',
-    role: 'librarian', // 'librarian' | 'reader'
+    role: 'librarian',
     email: 'knihovnice@knihovna.cz',
     avatar: '👩‍💼'
   },
@@ -34,7 +35,7 @@ export const AppProvider = ({ children }) => {
   // Current user state
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem('bookstache_user');
-    return saved ? JSON.parse(saved) : DEFAULT_USERS[0]; // default to Librarian for instant scan availability
+    return saved ? JSON.parse(saved) : DEFAULT_USERS[0];
   });
 
   // Main shared library catalog
@@ -69,7 +70,17 @@ export const AppProvider = ({ children }) => {
     ];
   });
 
-  // Save changes to localStorage
+  // External sync settings (Webhook URL / Auto CSV)
+  const [externalWebhookUrl, setExternalWebhookUrl] = useState(() => {
+    return localStorage.getItem('bookstache_webhook_url') || '';
+  });
+
+  const [autoExportCsv, setAutoExportCsv] = useState(() => {
+    const saved = localStorage.getItem('bookstache_auto_csv');
+    return saved ? JSON.parse(saved) : true;
+  });
+
+  // Persistence
   useEffect(() => {
     localStorage.setItem('bookstache_user', JSON.stringify(currentUser));
   }, [currentUser]);
@@ -86,6 +97,14 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem('bookstache_loans', JSON.stringify(loans));
   }, [loans]);
 
+  useEffect(() => {
+    localStorage.setItem('bookstache_webhook_url', externalWebhookUrl);
+  }, [externalWebhookUrl]);
+
+  useEffect(() => {
+    localStorage.setItem('bookstache_auto_csv', JSON.stringify(autoExportCsv));
+  }, [autoExportCsv]);
+
   // Actions
   const loginUser = (user) => {
     setCurrentUser(user);
@@ -95,8 +114,18 @@ export const AppProvider = ({ children }) => {
     setCurrentUser(null);
   };
 
+  const triggerExternalSync = (book, role) => {
+    if (autoExportCsv) {
+      exportBookToExternalCsvFile(book);
+    }
+    if (externalWebhookUrl) {
+      sendBookToExternalEndpoint(externalWebhookUrl, book, role);
+    }
+  };
+
   const addBookToPublicCatalog = (newBook) => {
     setPublicCatalog((prev) => [newBook, ...prev.filter(b => b.id !== newBook.id)]);
+    triggerExternalSync(newBook, 'knihovnik');
   };
 
   const updateBookInPublicCatalog = (updatedBook) => {
@@ -118,6 +147,7 @@ export const AppProvider = ({ children }) => {
         [userId]: [book, ...userList]
       };
     });
+    triggerExternalSync(book, 'ctenar');
   };
 
   const removeBookFromReaderCollection = (userId, bookId) => {
@@ -138,7 +168,6 @@ export const AppProvider = ({ children }) => {
     const book = publicCatalog.find(b => b.id === bookId);
     if (!book) return;
 
-    // Update public book availability
     updateBookInPublicCatalog({
       ...book,
       isAvailable: false,
@@ -146,7 +175,6 @@ export const AppProvider = ({ children }) => {
       dueDate: dueDateStr
     });
 
-    // Add loan record
     const newLoan = {
       id: `loan-${Date.now()}`,
       bookId,
@@ -165,10 +193,8 @@ export const AppProvider = ({ children }) => {
     const loan = loans.find(l => l.id === loanId);
     if (!loan) return;
 
-    // Update loan
     setLoans((prev) => prev.map(l => l.id === loanId ? { ...l, returned: true } : l));
 
-    // Update book status
     const book = publicCatalog.find(b => b.id === loan.bookId);
     if (book) {
       updateBookInPublicCatalog({
@@ -195,7 +221,11 @@ export const AppProvider = ({ children }) => {
         removeBookFromReaderCollection,
         loans,
         borrowBook,
-        returnBook
+        returnBook,
+        externalWebhookUrl,
+        setExternalWebhookUrl,
+        autoExportCsv,
+        setAutoExportCsv
       }}
     >
       {children}
