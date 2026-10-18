@@ -3,6 +3,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { decodeBarcodeFromImageFile } from '../services/barcodeScanner';
 import { fetchBookDetailsByIsbn } from '../services/bookService';
 import BookDetailModal from './BookDetailModal';
+import ExternalSyncConfigBanner from './ExternalSyncConfigBanner';
 import { Camera, Upload, Keyboard, AlertCircle, Loader2, Sparkles, Scan, ArrowRight } from 'lucide-react';
 
 export default function QuickScannerView() {
@@ -117,6 +118,9 @@ export default function QuickScannerView() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+
+      {/* External Table Sync Banner */}
+      <ExternalSyncConfigBanner />
 
       {/* Top Welcome Banner */}
       <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-emerald-600 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
