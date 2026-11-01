@@ -1,3 +1,4 @@
+import { shortBookDescription } from './bookDescription.js';
 import { sanitizeIsbn } from './barcodeScanner.js';
 
 // Global cache and pending requests map to prevent duplicate requests
@@ -208,7 +209,7 @@ export function parseKnihovnyRecord(record, targetIsbn13) {
     language: 'Čeština',
     genre: 'Knihovny.cz katalog',
     pages,
-    description: `Záznam z veřejného katalogu Knihovny.cz (ID: ${record.id || 'N/A'}).`,
+    description: shortBookDescription(record.summary) || shortBookDescription(record.description),
     coverUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80',
     isAvailable: true,
     borrowedBy: null,
@@ -264,7 +265,7 @@ async function performIsbnLookup(code) {
             language: info.language === 'cs' ? 'Čeština' : info.language === 'en' ? 'Angličtina' : info.language || 'Čeština',
             genre: info.categories ? info.categories[0] : 'Beletrie',
             pages: info.pageCount || 200,
-            description: info.description || 'Popis knihy z veřejné databáze Google Books.',
+            description: shortBookDescription(info.description),
             coverUrl: info.imageLinks?.thumbnail || info.imageLinks?.smallThumbnail || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400&q=80',
             isAvailable: true,
             borrowedBy: null,
@@ -309,7 +310,7 @@ async function performIsbnLookup(code) {
           language: 'Čeština',
           genre: info.subjects ? info.subjects[0].name : 'Všeobecná literatura',
           pages: info.number_of_pages || 180,
-          description: 'Informace získány z databáze Open Library.',
+          description: shortBookDescription(info.description),
           coverUrl: info.cover?.large || info.cover?.medium || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80',
           isAvailable: true,
           borrowedBy: null,
@@ -333,7 +334,7 @@ async function performIsbnLookup(code) {
   // 3. Knihovny.cz API
   const API_FIELDS = [
     'id', 'title', 'authors', 'publishers', 'placesOfPublication',
-    'publicationDates', 'physicalDescriptions', 'isbns', 'issns', 'cnb', 'formats'
+    'publicationDates', 'physicalDescriptions', 'isbns', 'issns', 'cnb', 'formats', 'summary'
   ];
   const params = new URLSearchParams({ lookfor: isbn13, type: 'ISN', limit: '10' });
   for (const f of API_FIELDS) params.append('field[]', f);
@@ -407,6 +408,7 @@ export async function fetchBookDetailsByIsbn(code) {
 
   const promise = performIsbnLookup(code)
     .then((result) => {
+      result.description = shortBookDescription(result.description);
       isbnCache.set(isbn13, result);
       pendingRequests.delete(isbn13);
       return result;

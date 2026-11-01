@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { shortBookDescription, fetchBookDescription, DESCRIPTION_MAX_LENGTH } from '../services/bookDescription';
 import { useApp } from '../context/AppContext';
 import {
   BookOpen,
@@ -19,23 +20,38 @@ import {
   Info
 } from 'lucide-react';
 
-export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
+export default function BookDetailModal({ book, isOpen, onClose, onSaved, readOnly = false }) {
   const { currentUser, addBookToPublicCatalog, addBookToReaderCollection } = useApp();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(book || {});
+  const [descriptionLoading, setDescriptionLoading] = useState(false);
+  const descriptionEditedRef = useRef(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
-    if (book) {
-      setFormData(book);
+    let cancelled = false;
+    descriptionEditedRef.current = false;
+    setDescriptionLoading(false);
+    if (book && isOpen) {
+      const description = shortBookDescription(book.description);
+      setFormData({ ...book, description });
+      if (!description && book.isbn) {
+        setDescriptionLoading(true);
+        fetchBookDescription(book.isbn).then(summary => {
+          if (cancelled) return;
+          if (!descriptionEditedRef.current) setFormData(prev => ({ ...prev, description: summary }));
+          setDescriptionLoading(false);
+        });
+      }
       // Auto-enable edit mode if book details were not found automatically
-      if (!book.isFound) {
+      if (!readOnly && !book.isFound) {
         setIsEditing(true);
       } else {
         setIsEditing(false);
       }
     }
-  }, [book]);
+    return () => { cancelled = true; };
+  }, [book, isOpen, readOnly]);
 
   if (!isOpen || !book) return null;
 
@@ -59,6 +75,7 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
       ...formData,
       title: formData.title.trim(),
       author: formData.author.trim(),
+      description: shortBookDescription(formData.description),
       isFound: true // User confirmed/edited the details
     };
 
@@ -88,10 +105,10 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
             </div>
             <div>
               <h2 className="text-xl font-bold">
-                {book.isFound ? 'Nalezená kniha' : 'Kniha nenalezena v databázích'}
+                {readOnly ? 'Detail knihy' : book.isFound ? 'Nalezená kniha' : 'Kniha nenalezena v databázích'}
               </h2>
               <p className="text-xs text-amber-100">
-                {book.apiSource ? `Zdroj dat: ${book.apiSource}` : 'Můžete ručně doplnit potřebné údaje'}
+                {book.apiSource ? `Zdroj dat: ${book.apiSource}` : readOnly ? 'Informace o knize' : 'Můžete ručně doplnit potřebné údaje'}
               </p>
             </div>
           </div>
@@ -120,7 +137,7 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
         )}
 
         {/* Not Found Warning Banner */}
-        {!book.isFound && (
+        {!readOnly && !book.isFound && (
           <div className="bg-orange-100 border-b border-orange-200 p-3 px-6 text-xs text-orange-900 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-orange-600 shrink-0" />
             <p className="font-semibold">
@@ -182,14 +199,14 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
                   </div>
                 </div>
 
-                <button
+                {!readOnly && <button
                   type="button"
                   onClick={() => setIsEditing(!isEditing)}
                   className="mt-3 text-xs font-semibold text-orange-700 hover:text-orange-800 bg-orange-100/70 hover:bg-orange-100 px-3 py-1.5 rounded-lg border border-orange-200 flex items-center gap-1.5 transition-colors"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                   {isEditing ? 'Ukončit úpravy' : 'Upravit zobrazené údaje'}
-                </button>
+                </button>}
               </div>
 
               {/* Book Details Table / Editable Fields */}
@@ -333,17 +350,20 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
 
                 {/* Description */}
                 <div>
-                  <label className="block text-xs font-bold text-stone-500 uppercase mb-1">Anotace / Popis</label>
+                  <label htmlFor="book-description" className="block text-xs font-bold text-stone-500 uppercase mb-1">Krátce o knize</label>
                   {isEditing ? (
                     <textarea
+                      id="book-description"
+                      placeholder="Stručně napište, o čem kniha je."
+                      maxLength={DESCRIPTION_MAX_LENGTH}
                       rows={3}
                       value={formData.description ?? ''}
-                      onChange={(e) => handleChange('description', e.target.value)}
+                      onChange={(e) => { descriptionEditedRef.current = true; handleChange('description', e.target.value); }}
                       className="w-full p-2 border border-stone-300 rounded-lg text-xs leading-relaxed focus:ring-2 focus:ring-orange-500"
                     />
                   ) : (
                     <p className="text-xs text-stone-600 leading-relaxed bg-white p-3 rounded-lg border border-stone-200">
-                      {formData.description || 'Bez popisu.'}
+                      {formData.description || (descriptionLoading ? 'Hledám krátký popis knihy…' : readOnly ? 'Krátký popis zatím není k dispozici.' : 'Krátký popis zatím není k dispozici. Můžete ho doplnit v úpravách.')}
                     </p>
                   )}
                 </div>
@@ -370,10 +390,10 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
                 onClick={onClose}
                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-stone-300 font-semibold text-stone-700 hover:bg-stone-100 text-sm transition-colors"
               >
-                Zrušit
+                {readOnly ? 'Zavřít detail' : 'Zrušit'}
               </button>
 
-              <button
+              {!readOnly && <button
                 type="submit"
                 className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
                   isLibrarian
@@ -390,7 +410,7 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved }) {
                     <Bookmark className="w-4 h-4" /> Uložit do osobní sbírky
                   </>
                 )}
-              </button>
+              </button>}
             </div>
           </form>
         )}

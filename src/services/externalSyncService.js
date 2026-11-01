@@ -80,7 +80,6 @@ export async function sendBookToExternalEndpoint(endpointUrl, book, role) {
       language: book.language,
       genre: book.genre,
       pages: book.pages,
-      description: book.description,
       addedBy: book.addedBy || role
     }
   };

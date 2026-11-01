@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import BookDetailModal from './BookDetailModal';
 import { useApp } from '../context/AppContext';
 import {
   Search,
@@ -36,6 +37,8 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
   const [availabilityFilter, setAvailabilityFilter] = useState('ALL');
   const [sortField, setSortField] = useState('title');
   const [sortOrder, setSortOrder] = useState('asc');
+
+  const [detailBook, setDetailBook] = useState(null);
 
   // Borrower modal state
   const [borrowModalBook, setBorrowModalBook] = useState(null);
@@ -334,7 +337,12 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
 
                     {/* Title & Author */}
                     <td className="py-3 px-4">
-                      <p className="font-extrabold text-stone-900 text-sm leading-tight">{book.title}</p>
+                      <button
+                        type="button"
+                        onClick={() => setDetailBook(book)}
+                        aria-label={`Zobrazit detail: ${book.title}`}
+                        className="font-extrabold text-stone-900 text-sm leading-tight text-left hover:text-orange-700 hover:underline focus-visible:underline"
+                      >{book.title}</button>
                       <p className="text-stone-600 font-semibold mt-0.5">{book.author}</p>
                       <p className="text-[10px] font-mono text-stone-400 mt-1">ISBN: {book.isbn}</p>
                     </td>
@@ -427,6 +435,13 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
           <span className="text-amber-800 font-bold">Bookstache verze 1.0</span>
         </div>
       </div>
+
+      <BookDetailModal
+        book={detailBook}
+        isOpen={!!detailBook}
+        readOnly
+        onClose={() => setDetailBook(null)}
+      />
 
       {/* Borrow Modal for Librarian */}
       {borrowModalBook && (

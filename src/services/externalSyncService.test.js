@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { sendBookToExternalEndpoint, validateExternalEndpoint } from './externalSyncService.js';
 
 const endpoint = 'https://script.google.com/macros/s/test-deployment/exec';
-const book = { isbn: '9788020719805', title: 'Babička', author: 'Božena Němcová' };
+const book = { isbn: '9788020719805', title: 'Babička', author: 'Božena Němcová', description: 'Krátký příběh o životě na vesnici.' };
 
 test('rejects document links, development URLs and unsafe addresses before sending', async (t) => {
   let calls = 0;
@@ -26,6 +26,7 @@ test('Apps Script uses a simple POST and requires explicit write acknowledgement
     assert.notEqual(options.mode, 'no-cors');
     const payload = JSON.parse(options.body);
     assert.equal(payload.book.isbn, book.isbn);
+    assert.equal('description' in payload.book, false);
     assert.equal(payload.userRole, 'knihovnik');
     return new Response(JSON.stringify({ ok: true }));
   });
