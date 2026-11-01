@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode';
 import { decodeBarcodeFromImageFile } from '../services/barcodeScanner';
 import { fetchBookDetailsByIsbn } from '../services/bookService';
 import BookDetailModal from './BookDetailModal';
@@ -14,22 +14,39 @@ export default function QuickScannerView() {
   const [scannedBook, setScannedBook] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
+  const [awaitingNewCode, setAwaitingNewCode] = useState(false);
 
   const fileInputRef = useRef(null);
+  const cameraBlockedRef = useRef(false);
+  const cameraPauseRef = useRef(null);
   const cameraQueueRef = useRef(Promise.resolve());
   const [cameraRetry, setCameraRetry] = useState(0);
 
   // Serialize start/stop, including starts still waiting for camera permission.
   // Each effect owns its scanner so an old cleanup cannot stop a new session.
   useEffect(() => {
-    if (activeTab !== 'camera' || loading || isModalOpen) return;
+    if (activeTab !== 'camera') return;
 
     let cancelled = false;
-    let detected = false;
+    let lastCode = null;
+    let lastSeen = 0;
     let scanner;
     let started = false;
     setCameraActive(false);
     setErrorMsg('');
+    setAwaitingNewCode(false);
+
+    const syncPause = () => {
+      if (!started || cancelled) return;
+      if (cameraBlockedRef.current && scanner.getState() === Html5QrcodeScannerState.SCANNING) {
+        // Keep the video and its MediaStream alive; pause decoding only.
+        scanner.pause(false);
+      } else if (!cameraBlockedRef.current && scanner.getState() === Html5QrcodeScannerState.PAUSED) {
+        lastSeen = Date.now();
+        scanner.resume();
+      }
+    };
+    cameraPauseRef.current = syncPause;
 
     const start = cameraQueueRef.current.then(async () => {
       if (cancelled) return;
@@ -39,14 +56,29 @@ export default function QuickScannerView() {
           { facingMode: 'environment' },
           { fps: 10, qrbox: { width: 280, height: 160 } },
           (decodedText) => {
-            if (cancelled || detected) return;
-            detected = true;
+            if (cancelled || cameraBlockedRef.current) return;
+            lastSeen = Date.now();
+            if (decodedText === lastCode) return;
+            lastCode = decodedText;
+            setAwaitingNewCode(true);
+            cameraBlockedRef.current = true;
+            syncPause();
             handleCodeDetected(decodedText);
           },
-          () => {} // Ignore scan errors per frame.
+          () => {
+            if (cancelled || cameraBlockedRef.current) return;
+            // Re-arm the same ISBN only after it has left the viewfinder.
+            if (lastCode && Date.now() - lastSeen > 1200) {
+              lastCode = null;
+              setAwaitingNewCode(false);
+            }
+          }
         );
         started = true;
-        if (!cancelled) setCameraActive(true);
+        if (!cancelled) {
+          syncPause();
+          setCameraActive(true);
+        }
       } catch (err) {
         if (!cancelled) {
           setCameraActive(false);
@@ -58,6 +90,7 @@ export default function QuickScannerView() {
 
     return () => {
       cancelled = true;
+      if (cameraPauseRef.current === syncPause) cameraPauseRef.current = null;
       setCameraActive(false);
       cameraQueueRef.current = start.then(async () => {
         if (!scanner) return;
@@ -67,10 +100,17 @@ export default function QuickScannerView() {
         // Keep the queue usable if a disconnected camera fails to stop.
       });
     };
-  }, [activeTab, loading, isModalOpen, cameraRetry]);
+  }, [activeTab, cameraRetry]);
+
+  useEffect(() => {
+    cameraBlockedRef.current = loading || isModalOpen;
+    cameraPauseRef.current?.();
+  }, [loading, isModalOpen]);
 
   const handleCodeDetected = async (code) => {
     if (!code) return;
+    cameraBlockedRef.current = true;
+    cameraPauseRef.current?.();
     setLoading(true);
     setErrorMsg('');
     try {
@@ -183,7 +223,7 @@ export default function QuickScannerView() {
         )}
 
         {/* Tab 1: Live Camera Scanner */}
-        {activeTab === 'camera' && (
+        <div hidden={activeTab !== 'camera'} className="w-full">
           <div className="w-full flex flex-col items-center">
             <div className="relative w-full max-w-md overflow-hidden rounded-xl border-2 border-dashed border-orange-400 bg-stone-900 shadow-inner">
               <div id="qr-reader-region" className="w-full min-h-[250px]" />
@@ -202,10 +242,12 @@ export default function QuickScannerView() {
               )}
             </div>
             <p className="text-xs text-stone-500 mt-3 font-medium">
-              Zamiřte kamerou na čárový nebo ISBN kód na zadní straně knihy.
+              {awaitingNewCode
+                ? 'Kód načten. Odsuňte knihu z obrazu a přiložte další.'
+                : 'Zamiřte kamerou na čárový nebo ISBN kód na zadní straně knihy.'}
             </p>
           </div>
-        )}
+        </div>
 
         {/* Tab 2: Upload Photo */}
         {activeTab === 'upload' && (
