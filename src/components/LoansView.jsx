@@ -19,13 +19,13 @@ export default function LoansView() {
     <div className="space-y-6">
 
       {/* Loans Header */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-6 rounded-2xl text-white shadow-lg flex items-center justify-between">
+      <div className="bg-gradient-to-r from-forest-600 to-forest-700 p-6 rounded-2xl text-white shadow-lg flex items-center justify-between">
         <div>
-          <div className="inline-flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full text-xs font-bold text-emerald-100 mb-2">
+          <div className="inline-flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full text-xs font-bold text-forest-100 mb-2">
             <HandHeart className="w-4 h-4" /> Správa knižních výpůjček
           </div>
           <h2 className="text-2xl font-extrabold">Přehled aktivních i vrácených výpůjček</h2>
-          <p className="text-emerald-100 text-xs mt-1">
+          <p className="text-forest-100 text-xs mt-1">
             Evidence výpůjček pro knihovníky s možností vrácení knihy jedním kliknutím
           </p>
         </div>
@@ -35,14 +35,14 @@ export default function LoansView() {
       <div className="bg-white rounded-2xl border border-stone-200 shadow-md overflow-hidden">
         <div className="p-4 bg-stone-50 border-b border-stone-200 flex items-center justify-between">
           <h3 className="font-bold text-stone-800 text-base flex items-center gap-2">
-            <Clock className="w-5 h-5 text-amber-600" />
+            <Clock className="w-5 h-5 text-parchment-600" />
             Aktuálně probíhající výpůjčky ({activeLoans.length})
           </h3>
         </div>
 
         {activeLoans.length === 0 ? (
           <div className="p-8 text-center text-stone-500">
-            <CheckCircle className="w-12 h-12 mx-auto text-emerald-500 mb-2" />
+            <CheckCircle className="w-12 h-12 mx-auto text-forest-500 mb-2" />
             <p className="font-bold text-sm">Všechny vypůjčené knihy byly řádně vráceny!</p>
           </div>
         ) : (
@@ -62,7 +62,7 @@ export default function LoansView() {
                 {activeLoans.map((loan) => {
                   const overdue = isOverdue(loan.dueDate);
                   return (
-                    <tr key={loan.id} className="hover:bg-amber-50/40 transition-colors">
+                    <tr key={loan.id} className="hover:bg-parchment-50/40 transition-colors">
                       <td className="py-3 px-4 font-extrabold text-stone-900 text-sm">
                         {loan.bookTitle}
                       </td>
@@ -82,7 +82,7 @@ export default function LoansView() {
                             <AlertTriangle className="w-3.5 h-3.5" /> Po termínu
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-300">
+                          <span className="inline-flex items-center gap-1 font-bold text-forest-700 bg-forest-100 px-2.5 py-1 rounded-full border border-forest-300">
                             <Clock className="w-3.5 h-3.5" /> V pořádku
                           </span>
                         )}
@@ -90,7 +90,7 @@ export default function LoansView() {
                       <td className="py-3 px-4">
                         <button
                           onClick={() => returnBook(loan.id)}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1 text-xs"
+                          className="px-3 py-1.5 bg-forest-600 hover:bg-forest-700 text-white font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1 text-xs"
                         >
                           <RotateCcw className="w-3.5 h-3.5" /> Vrátit do fondu
                         </button>
@@ -121,7 +121,7 @@ export default function LoansView() {
                     <td className="py-2.5 px-4 text-stone-600">{loan.borrowerName}</td>
                     <td className="py-2.5 px-4 font-mono text-stone-500">{loan.borrowedDate}</td>
                     <td className="py-2.5 px-4">
-                      <span className="text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded-md">
+                      <span className="text-forest-700 font-bold bg-forest-100 px-2 py-0.5 rounded-md">
                         Vráceno
                       </span>
                     </td>

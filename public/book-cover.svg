@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="340" viewBox="0 0 240 340">
+  <rect width="240" height="340" rx="8" fill="#31513f"/>
+  <path d="M14 0v340" stroke="#111f18" stroke-opacity=".3" stroke-width="9"/>
+  <rect x="30" y="24" width="186" height="292" rx="2" fill="none" stroke="#d9c38e" stroke-opacity=".65"/>
+  <rect x="36" y="30" width="174" height="280" rx="2" fill="none" stroke="#d9c38e" stroke-opacity=".25"/>
+  <g fill="none" stroke="#d9c38e" stroke-width="2" stroke-linejoin="round">
+    <path d="M122 146c-14-9-27-10-40-6v48c14-4 28-3 40 6 12-9 26-10 40-6v-48c-13-4-26-3-40 6v48"/>
+    <path d="M107 90h30m-15-8v16m-15 150h30m-15-8v16"/>
+  </g>
+  <text x="122" y="219" fill="#eaddb9" text-anchor="middle" font-family="Georgia,serif" font-size="12" letter-spacing="2">BOOKSTACHE</text>
+</svg>

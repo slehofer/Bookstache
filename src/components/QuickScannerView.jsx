@@ -4,7 +4,7 @@ import { decodeBarcodeFromImageFile } from '../services/barcodeScanner';
 import { fetchBookDetailsByIsbn } from '../services/bookService';
 import BookDetailModal from './BookDetailModal';
 import ExternalSyncConfigBanner from './ExternalSyncConfigBanner';
-import { Camera, Upload, Keyboard, AlertCircle, Loader2, Sparkles, Scan, ArrowRight } from 'lucide-react';
+import { Camera, Upload, Keyboard, AlertCircle, Loader2, Sparkles, Scan, ArrowRight, BookOpen, Bookmark } from 'lucide-react';
 
 export default function QuickScannerView() {
   const [activeTab, setActiveTab] = useState('camera'); // 'camera' | 'upload' | 'manual'
@@ -150,38 +150,42 @@ export default function QuickScannerView() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
 
-      {/* External Table Sync Banner */}
-      <ExternalSyncConfigBanner />
-
-      {/* Top Welcome Banner */}
-      <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-emerald-600 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-amber-100 mb-2 border border-white/30">
-            <Scan className="w-3.5 h-3.5" /> Okamžitý skener knižních kódů
-          </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold">Naskenujte čárový nebo ISBN kód</h1>
-          <p className="text-amber-100 text-sm mt-1 max-w-xl">
-            Aplikace ihned vyhledá autora, název, nakladatelství, žánr i věkovou skupinu a připraví knihu k uložení.
+      <section className="library-hero relative overflow-hidden rounded-2xl border border-parchment-200 p-5 sm:p-10">
+        <div className="relative z-10 max-w-xl md:max-w-[65%]">
+          <p className="mb-4 text-[10px] sm:text-xs font-extrabold tracking-[0.2em] uppercase text-wine-700 flex items-center gap-2">
+            <span className="h-px w-8 bg-wine-400" /> Vaše osobní čítárna
           </p>
-        </div>
-        <div className="hidden md:flex items-center gap-2 bg-white/10 p-3 rounded-2xl backdrop-blur-sm border border-white/20">
-          <div className="text-3xl">📚</div>
-          <div className="text-xs">
-            <p className="font-bold">Podpora EAN-13 & ISBN</p>
-            <p className="text-amber-100">Kamera, soubory i ruční zadání</p>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl leading-[1.18] text-forest-900">
+            Každá kniha má<br /><em className="text-wine-700">svůj příběh.</em>
+          </h1>
+          <p className="mt-4 max-w-md text-sm sm:text-base leading-relaxed text-stone-600">
+            Naskenujte ISBN, objevte knihu a najděte jí místo ve své knihovně.
+          </p>
+          <div className="mt-6 hidden sm:flex flex-wrap gap-x-5 gap-y-2 text-xs font-bold text-forest-700">
+            <span className="flex items-center gap-1.5"><Scan className="w-4 h-4" /> Naskenovat</span>
+            <span className="flex items-center gap-1.5"><BookOpen className="w-4 h-4" /> Objevit</span>
+            <span className="flex items-center gap-1.5"><Bookmark className="w-4 h-4" /> Uchovat</span>
           </div>
         </div>
-      </div>
+        <div className="library-illustration hidden md:block" aria-hidden="true">
+          <div className="library-stamp">EX LIBRIS<span>Bookstache</span><BookOpen size={22} /></div>
+          <div className="book-spine spine-one"><span>Příběhy</span></div>
+          <div className="book-spine spine-two"><span>Malé radosti</span></div>
+          <div className="book-spine spine-three"><span>Nové světy</span></div>
+          <div className="book-stack"><span>Ještě jednu kapitolu…</span></div>
+          <div className="book-shelf" />
+        </div>
+      </section>
 
       {/* Tabs */}
-      <div className="bg-white rounded-2xl border border-stone-200 p-2 shadow-sm flex flex-col sm:flex-row gap-2">
+      <div className="library-tabs bg-white rounded-2xl border border-stone-200 p-2 shadow-sm grid grid-cols-3 gap-2">
         <button
           onClick={() => setActiveTab('camera')}
           className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
             activeTab === 'camera'
-              ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
+              ? 'bg-wine-700 text-white shadow-md'
               : 'text-stone-600 hover:bg-stone-100'
           }`}
         >
@@ -192,7 +196,7 @@ export default function QuickScannerView() {
           onClick={() => setActiveTab('upload')}
           className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
             activeTab === 'upload'
-              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+              ? 'bg-forest-700 text-white shadow-md'
               : 'text-stone-600 hover:bg-stone-100'
           }`}
         >
@@ -203,7 +207,7 @@ export default function QuickScannerView() {
           onClick={() => setActiveTab('manual')}
           className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
             activeTab === 'manual'
-              ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'
+              ? 'bg-parchment-700 text-white shadow-md'
               : 'text-stone-600 hover:bg-stone-100'
           }`}
         >
@@ -216,7 +220,7 @@ export default function QuickScannerView() {
 
         {loading && (
           <div className="absolute inset-0 z-20 bg-white/90 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center gap-3">
-            <Loader2 className="w-12 h-12 text-orange-600 animate-spin" />
+            <Loader2 className="w-12 h-12 text-wine-600 animate-spin" />
             <p className="font-bold text-stone-800 text-base">Hledám informace o knize...</p>
             <p className="text-xs text-stone-500">Dotazuji se v databázích dat a připravuji tabulku</p>
           </div>
@@ -225,16 +229,16 @@ export default function QuickScannerView() {
         {/* Tab 1: Live Camera Scanner */}
         <div hidden={activeTab !== 'camera'} className="w-full">
           <div className="w-full flex flex-col items-center">
-            <div className="relative w-full max-w-md overflow-hidden rounded-xl border-2 border-dashed border-orange-400 bg-stone-900 shadow-inner">
+            <div className="relative w-full max-w-md overflow-hidden rounded-xl border-2 border-dashed border-wine-400 bg-stone-900 shadow-inner">
               <div id="qr-reader-region" className="w-full min-h-[250px]" />
 
               {!cameraActive && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-stone-900/90 text-white space-y-3">
-                  <Camera className="w-12 h-12 text-orange-400 animate-pulse" />
+                  <Camera className="w-12 h-12 text-wine-400 animate-pulse" />
                   <p className="text-sm font-semibold">Připravuji kameru...</p>
                   <button
                     onClick={() => setCameraRetry((retry) => retry + 1)}
-                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-bold transition-colors"
+                    className="px-4 py-2 bg-wine-600 hover:bg-wine-700 text-white rounded-lg text-xs font-bold transition-colors"
                   >
                     Zapnout kameru znova
                   </button>
@@ -251,8 +255,8 @@ export default function QuickScannerView() {
 
         {/* Tab 2: Upload Photo */}
         {activeTab === 'upload' && (
-          <div className="w-full max-w-md text-center p-8 border-2 border-dashed border-emerald-400 rounded-2xl bg-emerald-50/50 hover:bg-emerald-50 transition-colors">
-            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-700 shadow-inner">
+          <div className="w-full max-w-md text-center p-8 border-2 border-dashed border-forest-400 rounded-2xl bg-forest-50/50 hover:bg-forest-50 transition-colors">
+            <div className="w-16 h-16 bg-forest-100 rounded-full flex items-center justify-center mx-auto mb-4 text-forest-700 shadow-inner">
               <Upload className="w-8 h-8" />
             </div>
             <h3 className="font-bold text-stone-800 text-base mb-1">
@@ -272,7 +276,7 @@ export default function QuickScannerView() {
             />
             <label
               htmlFor="file-upload-input"
-              className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-colors text-sm"
+              className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 bg-forest-600 hover:bg-forest-700 text-white font-bold rounded-xl shadow-md transition-colors text-sm"
             >
               <Upload className="w-4 h-4" /> Vybrat obrázek z galerie
             </label>
@@ -283,7 +287,7 @@ export default function QuickScannerView() {
         {activeTab === 'manual' && (
           <form onSubmit={handleManualSubmit} className="w-full max-w-md space-y-4">
             <div className="text-center mb-2">
-              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-2 text-amber-700">
+              <div className="w-12 h-12 bg-parchment-100 rounded-full flex items-center justify-center mx-auto mb-2 text-parchment-700">
                 <Keyboard className="w-6 h-6" />
               </div>
               <h3 className="font-bold text-stone-800 text-base">Ruční zadání ISBN kódu</h3>
@@ -296,14 +300,14 @@ export default function QuickScannerView() {
                 placeholder="např. 9788020719805"
                 value={manualIsbn}
                 onChange={(e) => setManualIsbn(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 text-center font-mono font-bold text-lg tracking-widest"
+                className="w-full px-4 py-3 border-2 border-parchment-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-parchment-500 text-center font-mono font-bold text-lg tracking-widest"
               />
             </div>
 
             <button
               type="submit"
               disabled={!manualIsbn.trim()}
-              className="w-full py-3 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 text-sm"
+              className="w-full py-3 bg-parchment-600 hover:bg-parchment-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 text-sm"
             >
               Vyhledat knihu <ArrowRight className="w-4 h-4" />
             </button>
@@ -323,10 +327,12 @@ export default function QuickScannerView() {
 
       </div>
 
+      <ExternalSyncConfigBanner />
+
       {/* Quick Test Demo Barcodes */}
-      <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-4 text-xs">
+      <div className="bg-parchment-50/70 border border-parchment-200 rounded-xl p-4 text-xs">
         <p className="font-bold text-stone-700 mb-2 flex items-center gap-1.5">
-          <Sparkles className="w-4 h-4 text-amber-600" /> Rychlé vyzkoušení s příkladovými kódy:
+          <Sparkles className="w-4 h-4 text-parchment-600" /> Rychlé vyzkoušení s příkladovými kódy:
         </p>
         <div className="flex flex-wrap gap-2">
           {[
@@ -341,7 +347,7 @@ export default function QuickScannerView() {
                 setManualIsbn(sample.isbn);
                 handleCodeDetected(sample.isbn);
               }}
-              className="px-2.5 py-1.5 bg-white border border-amber-300 rounded-lg hover:bg-amber-100 text-stone-800 font-mono font-semibold transition-colors shadow-sm"
+              className="px-2.5 py-1.5 bg-white border border-parchment-300 rounded-lg hover:bg-parchment-100 text-stone-800 font-mono font-semibold transition-colors shadow-sm"
             >
               {sample.label} <span className="text-stone-400 font-normal">({sample.isbn})</span>
             </button>

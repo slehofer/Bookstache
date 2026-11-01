@@ -35,14 +35,14 @@ export default function AuthModal({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl border border-amber-200 w-full max-w-lg overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl border border-parchment-200 w-full max-w-lg overflow-hidden">
         {/* Header with Orange/Green Branding */}
-        <div className="bg-gradient-to-r from-orange-500 via-amber-600 to-emerald-600 p-6 text-white text-center relative">
+        <div className="bg-forest-800 border-b-4 border-parchment-400 p-6 text-white text-center relative">
           <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl mx-auto flex items-center justify-center mb-3 shadow-inner">
-            <Sparkles className="w-9 h-9 text-amber-100" />
+            <Sparkles className="w-9 h-9 text-parchment-100" />
           </div>
           <h2 className="text-2xl font-bold">Přihlášení do Bookstache</h2>
-          <p className="text-amber-100 text-sm mt-1">
+          <p className="text-parchment-100 text-sm mt-1">
             Vyberte si profil pro přístup ke službám knihovny
           </p>
         </div>
@@ -53,7 +53,7 @@ export default function AuthModal({ isOpen, onClose }) {
             onClick={() => setActiveTab('select')}
             className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-2 border-b-2 transition-colors ${
               activeTab === 'select'
-                ? 'border-orange-500 text-orange-600 bg-white'
+                ? 'border-wine-500 text-wine-600 bg-white'
                 : 'border-transparent text-stone-500 hover:text-stone-800'
             }`}
           >
@@ -64,7 +64,7 @@ export default function AuthModal({ isOpen, onClose }) {
             onClick={() => setActiveTab('custom')}
             className={`flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-2 border-b-2 transition-colors ${
               activeTab === 'custom'
-                ? 'border-emerald-600 text-emerald-700 bg-white'
+                ? 'border-forest-600 text-forest-700 bg-white'
                 : 'border-transparent text-stone-500 hover:text-stone-800'
             }`}
           >
@@ -87,23 +87,23 @@ export default function AuthModal({ isOpen, onClose }) {
                   onClick={() => handleSelectUser(user)}
                   className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between group hover:shadow-md ${
                     user.role === 'librarian'
-                      ? 'border-orange-200 hover:border-orange-500 bg-orange-50/50 hover:bg-orange-50'
-                      : 'border-emerald-200 hover:border-emerald-500 bg-emerald-50/50 hover:bg-emerald-50'
+                      ? 'border-wine-200 hover:border-wine-500 bg-wine-50/50 hover:bg-wine-50'
+                      : 'border-forest-200 hover:border-forest-500 bg-forest-50/50 hover:bg-forest-50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-3xl">{user.avatar}</span>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-stone-800 group-hover:text-orange-600">
+                        <span className="font-bold text-stone-800 group-hover:text-wine-600">
                           {user.name}
                         </span>
                         {user.role === 'librarian' ? (
-                          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-bold bg-orange-100 text-orange-800 border border-orange-300">
+                          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-bold bg-wine-100 text-wine-800 border border-wine-300">
                             <Shield className="w-3 h-3" /> Knihovník
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-bold bg-forest-100 text-forest-800 border border-forest-300">
                             <BookOpen className="w-3 h-3" /> Čtenář
                           </span>
                         )}
@@ -132,7 +132,7 @@ export default function AuthModal({ isOpen, onClose }) {
                   placeholder="např. Marie Svobodová"
                   value={customName}
                   onChange={(e) => setCustomName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-wine-500 focus:border-transparent text-sm"
                 />
               </div>
 
@@ -145,7 +145,7 @@ export default function AuthModal({ isOpen, onClose }) {
                   placeholder="marie@seznam.cz"
                   value={customEmail}
                   onChange={(e) => setCustomEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-wine-500 focus:border-transparent text-sm"
                 />
               </div>
 
@@ -159,11 +159,11 @@ export default function AuthModal({ isOpen, onClose }) {
                     onClick={() => setCustomRole('reader')}
                     className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all ${
                       customRole === 'reader'
-                        ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-500'
+                        ? 'border-forest-600 bg-forest-50 ring-2 ring-forest-500'
                         : 'border-stone-200 hover:border-stone-300 bg-stone-50'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5 font-bold text-xs text-emerald-800">
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-forest-800">
                       <BookOpen className="w-4 h-4" /> Čtenář
                     </div>
                     <span className="text-[11px] text-stone-500">
@@ -176,11 +176,11 @@ export default function AuthModal({ isOpen, onClose }) {
                     onClick={() => setCustomRole('librarian')}
                     className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all ${
                       customRole === 'librarian'
-                        ? 'border-orange-500 bg-orange-50 ring-2 ring-orange-500'
+                        ? 'border-wine-500 bg-wine-50 ring-2 ring-wine-500'
                         : 'border-stone-200 hover:border-stone-300 bg-stone-50'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5 font-bold text-xs text-orange-800">
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-wine-800">
                       <Shield className="w-4 h-4" /> Knihovník
                     </div>
                     <span className="text-[11px] text-stone-500">
@@ -193,7 +193,7 @@ export default function AuthModal({ isOpen, onClose }) {
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3 px-4 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 text-sm"
+                  className="w-full py-3 px-4 bg-wine-600 hover:bg-wine-700 text-white font-bold rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   <LogIn className="w-4 h-4" /> Vstoupit do aplikace
                 </button>

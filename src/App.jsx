@@ -13,7 +13,7 @@ function MainLayout() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex flex-col bg-stone-100/70 text-stone-800">
+    <div className="library-shell min-h-screen flex flex-col text-stone-800">
 
       {/* Top Navbar */}
       <Navbar
@@ -23,7 +23,7 @@ function MainLayout() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         {activeView === 'scan' && <QuickScannerView />}
         {activeView === 'catalog' && <BookCatalogTable isReaderOnly={false} />}
         {activeView === 'my-collection' && <BookCatalogTable isReaderOnly={true} />}
@@ -32,13 +32,13 @@ function MainLayout() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-stone-900 text-stone-400 text-xs border-t border-stone-800 py-6 mt-12">
+      <footer className="library-footer text-stone-600 text-xs border-t border-stone-200 py-7 mt-12">
         <div className="max-w-7xl mx-auto px-4 text-center space-y-2">
-          <p className="font-bold text-stone-200">
-            Bookstache 📚 - Aplikace pro knihovníky a čtenáře
+          <p className="font-serif text-lg text-forest-900">
+            Bookstache · Místo pro vaše příběhy
           </p>
           <p className="text-stone-500">
-            Oranžovo-zelená verze s podporou živého skenování čárových kódů, vyhledávání ISBN a správy výpůjček.
+            Od prvního naskenování po poslední dočtenou stránku.
           </p>
         </div>
       </footer>

@@ -179,7 +179,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
       <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-stone-900 flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-orange-600" />
+            <BookOpen className="w-6 h-6 text-wine-600" />
             {isReaderOnly ? 'Moje osobně uložená sbírka' : 'Kompletní katalog knihovny'}
           </h2>
           <p className="text-xs text-stone-500 mt-1">
@@ -190,14 +190,14 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
         <div className="flex items-center gap-2 w-full md:w-auto">
           <button
             onClick={handleExportCSV}
-            className="flex-1 md:flex-none px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors"
+            className="flex-1 md:flex-none px-4 py-2 bg-forest-700 hover:bg-forest-800 text-white rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors"
             title="Stáhnout tabulku v CSV"
           >
             <Download className="w-4 h-4" /> Export CSV
           </button>
           <button
             onClick={handleExportJSON}
-            className="flex-1 md:flex-none px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors"
+            className="flex-1 md:flex-none px-4 py-2 bg-parchment-600 hover:bg-parchment-700 text-white rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-colors"
             title="Stáhnout v JSON"
           >
             <Download className="w-4 h-4" /> Export JSON
@@ -206,7 +206,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200/80 space-y-3">
+      <div className="bg-parchment-50/60 p-4 rounded-2xl border border-parchment-200/80 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
 
           {/* Search Field */}
@@ -217,7 +217,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
               placeholder="Hledat název, autor, ISBN..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-white border border-stone-300 rounded-xl text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none"
+              className="w-full pl-9 pr-3 py-2 bg-white border border-stone-300 rounded-xl text-xs focus:ring-2 focus:ring-wine-500 focus:outline-none"
             />
           </div>
 
@@ -226,7 +226,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
             <select
               value={genreFilter}
               onChange={(e) => setGenreFilter(e.target.value)}
-              className="w-full p-2 bg-white border border-stone-300 rounded-xl text-xs font-semibold text-stone-700 focus:ring-2 focus:ring-orange-500"
+              className="w-full p-2 bg-white border border-stone-300 rounded-xl text-xs font-semibold text-stone-700 focus:ring-2 focus:ring-wine-500"
             >
               <option value="ALL">Všechny žánry ({availableGenres.length})</option>
               {availableGenres.map((g) => (
@@ -242,7 +242,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
             <select
               value={ageGroupFilter}
               onChange={(e) => setAgeGroupFilter(e.target.value)}
-              className="w-full p-2 bg-white border border-stone-300 rounded-xl text-xs font-semibold text-stone-700 focus:ring-2 focus:ring-orange-500"
+              className="w-full p-2 bg-white border border-stone-300 rounded-xl text-xs font-semibold text-stone-700 focus:ring-2 focus:ring-wine-500"
             >
               <option value="ALL">Všechny věkové skupiny</option>
               {availableAgeGroups.map((a) => (
@@ -259,7 +259,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
               <select
                 value={availabilityFilter}
                 onChange={(e) => setAvailabilityFilter(e.target.value)}
-                className="w-full p-2 bg-white border border-stone-300 rounded-xl text-xs font-semibold text-stone-700 focus:ring-2 focus:ring-orange-500"
+                className="w-full p-2 bg-white border border-stone-300 rounded-xl text-xs font-semibold text-stone-700 focus:ring-2 focus:ring-wine-500"
               >
                 <option value="ALL">Všechny stavové výpůjčky</option>
                 <option value="AVAILABLE">Pouze dostupné skladem</option>
@@ -282,7 +282,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
                 <th className="py-3.5 px-4">Obálka</th>
                 <th
                   onClick={() => toggleSort('title')}
-                  className="py-3.5 px-4 cursor-pointer hover:text-orange-400 transition-colors"
+                  className="py-3.5 px-4 cursor-pointer hover:text-wine-400 transition-colors"
                 >
                   <div className="flex items-center gap-1">
                     Název a Autor <ArrowUpDown className="w-3 h-3" />
@@ -290,7 +290,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
                 </th>
                 <th
                   onClick={() => toggleSort('publisher')}
-                  className="py-3.5 px-4 cursor-pointer hover:text-orange-400 transition-colors hidden md:table-cell"
+                  className="py-3.5 px-4 cursor-pointer hover:text-wine-400 transition-colors hidden md:table-cell"
                 >
                   <div className="flex items-center gap-1">
                     Nakladatelství / Rok <ArrowUpDown className="w-3 h-3" />
@@ -298,7 +298,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
                 </th>
                 <th
                   onClick={() => toggleSort('genre')}
-                  className="py-3.5 px-4 cursor-pointer hover:text-orange-400 transition-colors hidden lg:table-cell"
+                  className="py-3.5 px-4 cursor-pointer hover:text-wine-400 transition-colors hidden lg:table-cell"
                 >
                   <div className="flex items-center gap-1">
                     Žánr <ArrowUpDown className="w-3 h-3" />
@@ -321,7 +321,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
                 </tr>
               ) : (
                 filteredBooks.map((book) => (
-                  <tr key={book.id} className="hover:bg-amber-50/40 transition-colors">
+                  <tr key={book.id} className="hover:bg-parchment-50/40 transition-colors">
 
                     {/* Cover */}
                     <td className="py-3 px-4">
@@ -330,7 +330,8 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
                         alt={book.title}
                         className="w-10 h-14 object-cover rounded-md shadow-sm border border-stone-200"
                         onError={(e) => {
-                          e.target.src = 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80';
+                          e.target.onerror = null;
+                          e.target.src = `${import.meta.env.BASE_URL}book-cover.svg`;
                         }}
                       />
                     </td>
@@ -341,7 +342,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
                         type="button"
                         onClick={() => setDetailBook(book)}
                         aria-label={`Zobrazit detail: ${book.title}`}
-                        className="font-extrabold text-stone-900 text-sm leading-tight text-left hover:text-orange-700 hover:underline focus-visible:underline"
+                        className="font-serif font-semibold text-stone-900 text-base leading-tight text-left hover:text-wine-700 hover:underline focus-visible:underline"
                       >{book.title}</button>
                       <p className="text-stone-600 font-semibold mt-0.5">{book.author}</p>
                       <p className="text-[10px] font-mono text-stone-400 mt-1">ISBN: {book.isbn}</p>
@@ -355,14 +356,14 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
 
                     {/* Genre */}
                     <td className="py-3 px-4 hidden lg:table-cell">
-                      <span className="inline-block px-2 py-0.5 bg-amber-100 text-amber-900 font-bold rounded-md border border-amber-300">
+                      <span className="inline-block px-2 py-0.5 bg-parchment-100 text-parchment-900 font-bold rounded-md border border-parchment-300">
                         {book.genre}
                       </span>
                     </td>
 
                     {/* Target Age Group */}
                     <td className="py-3 px-4 hidden xl:table-cell">
-                      <span className="inline-block px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold rounded-full border border-emerald-300">
+                      <span className="inline-block px-2 py-0.5 bg-forest-100 text-forest-800 font-bold rounded-full border border-forest-300">
                         {book.targetAgeGroup}
                       </span>
                     </td>
@@ -372,11 +373,11 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                         {!isReaderOnly && (
                           book.isAvailable ? (
-                            <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                            <span className="inline-flex items-center gap-1 font-bold text-forest-700 bg-forest-50 px-2.5 py-1 rounded-full border border-forest-200">
                               <CheckCircle className="w-3.5 h-3.5" /> Skladem
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-300">
+                            <span className="inline-flex items-center gap-1 font-bold text-parchment-800 bg-parchment-50 px-2.5 py-1 rounded-full border border-parchment-300">
                               <XCircle className="w-3.5 h-3.5" /> Vypůjčeno
                             </span>
                           )
@@ -388,7 +389,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
                             {book.isAvailable && (
                               <button
                                 onClick={() => setBorrowModalBook(book)}
-                                className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                                className="p-1.5 bg-forest-600 hover:bg-forest-700 text-white rounded-lg transition-colors"
                                 title="Vytvořit výpůjčku"
                               >
                                 <HandHeart className="w-4 h-4" />
@@ -432,7 +433,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
         {/* Table Footer */}
         <div className="p-4 bg-stone-50 border-t border-stone-200 text-xs font-semibold text-stone-600 flex justify-between items-center">
           <span>Zobrazeno {filteredBooks.length} z celkem {sourceBooks.length} záznamů</span>
-          <span className="text-amber-800 font-bold">Bookstache verze 1.0</span>
+          <span className="text-parchment-800 font-bold">Bookstache verze 1.0</span>
         </div>
       </div>
 
@@ -446,9 +447,9 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
       {/* Borrow Modal for Librarian */}
       {borrowModalBook && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-2xl border border-emerald-200 w-full max-w-md p-6 space-y-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-forest-200 w-full max-w-md p-6 space-y-4">
             <h3 className="text-xl font-bold text-stone-900 flex items-center gap-2">
-              <HandHeart className="w-5 h-5 text-emerald-600" /> Vypůjčit knihu čtenáři
+              <HandHeart className="w-5 h-5 text-forest-600" /> Vypůjčit knihu čtenáři
             </h3>
             <p className="text-xs text-stone-500">
               Kniha: <strong className="text-stone-800">{borrowModalBook.title}</strong> ({borrowModalBook.author})
@@ -465,7 +466,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
                   placeholder="např. Jan Novák"
                   value={borrowerName}
                   onChange={(e) => setBorrowerName(e.target.value)}
-                  className="w-full p-2.5 border border-stone-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                  className="w-full p-2.5 border border-stone-300 rounded-xl text-xs focus:ring-2 focus:ring-forest-500"
                 />
               </div>
 
@@ -478,7 +479,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
                   placeholder="jan.novak@email.cz"
                   value={borrowerEmail}
                   onChange={(e) => setBorrowerEmail(e.target.value)}
-                  className="w-full p-2.5 border border-stone-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                  className="w-full p-2.5 border border-stone-300 rounded-xl text-xs focus:ring-2 focus:ring-forest-500"
                 />
               </div>
 
@@ -492,7 +493,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md"
+                  className="px-5 py-2 bg-forest-600 hover:bg-forest-700 text-white font-bold rounded-xl text-xs shadow-md"
                 >
                   Potvrdit výpůjčku
                 </button>
