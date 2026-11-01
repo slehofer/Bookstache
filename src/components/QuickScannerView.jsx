@@ -16,65 +16,58 @@ export default function QuickScannerView() {
   const [cameraActive, setCameraActive] = useState(false);
 
   const fileInputRef = useRef(null);
-  const scannerRef = useRef(null);
+  const cameraQueueRef = useRef(Promise.resolve());
+  const [cameraRetry, setCameraRetry] = useState(0);
 
-  // Initialize html5-qrcode for live camera
-  const startCameraScanner = async () => {
-    setErrorMsg('');
-    setCameraActive(true);
-    try {
-      if (scannerRef.current) {
-        await scannerRef.current.stop().catch(() => {});
-      }
-
-      const html5QrCode = new Html5Qrcode('qr-reader-region');
-      scannerRef.current = html5QrCode;
-
-      await html5QrCode.start(
-        { facingMode: 'environment' },
-        {
-          fps: 10,
-          qrbox: { width: 280, height: 160 }
-        },
-        async (decodedText) => {
-          // On successful code detected
-          await html5QrCode.stop();
-          setCameraActive(false);
-          handleCodeDetected(decodedText);
-        },
-        () => {
-          // ignore scan errors per frame
-        }
-      );
-    } catch (err) {
-      setCameraActive(false);
-      setErrorMsg('Kamera nebyla nalezena nebo přístup k ní byl odmítnut. Můžete nahrát fotku z galerie nebo zadat ISBN ručně.');
-    }
-  };
-
-  const stopCameraScanner = async () => {
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.stop();
-        scannerRef.current = null;
-      } catch (err) {
-        // ignore
-      }
-    }
-    setCameraActive(false);
-  };
-
+  // Serialize start/stop, including starts still waiting for camera permission.
+  // Each effect owns its scanner so an old cleanup cannot stop a new session.
   useEffect(() => {
-    if (activeTab === 'camera') {
-      startCameraScanner();
-    } else {
-      stopCameraScanner();
-    }
+    if (activeTab !== 'camera' || loading || isModalOpen) return;
+
+    let cancelled = false;
+    let detected = false;
+    let scanner;
+    let started = false;
+    setCameraActive(false);
+    setErrorMsg('');
+
+    const start = cameraQueueRef.current.then(async () => {
+      if (cancelled) return;
+      try {
+        scanner = new Html5Qrcode('qr-reader-region');
+        await scanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 280, height: 160 } },
+          (decodedText) => {
+            if (cancelled || detected) return;
+            detected = true;
+            handleCodeDetected(decodedText);
+          },
+          () => {} // Ignore scan errors per frame.
+        );
+        started = true;
+        if (!cancelled) setCameraActive(true);
+      } catch (err) {
+        if (!cancelled) {
+          setCameraActive(false);
+          setErrorMsg('Kamera nebyla nalezena nebo přístup k ní byl odmítnut. Můžete nahrát fotku z galerie nebo zadat ISBN ručně.');
+        }
+      }
+    });
+    cameraQueueRef.current = start;
 
     return () => {
-      stopCameraScanner();
+      cancelled = true;
+      setCameraActive(false);
+      cameraQueueRef.current = start.then(async () => {
+        if (!scanner) return;
+        if (started) await scanner.stop();
+        scanner.clear();
+      }).catch(() => {
+        // Keep the queue usable if a disconnected camera fails to stop.
+      });
     };
-  }, [activeTab]);
+  }, [activeTab, loading, isModalOpen, cameraRetry]);
 
   const handleCodeDetected = async (code) => {
     if (!code) return;
@@ -200,7 +193,7 @@ export default function QuickScannerView() {
                   <Camera className="w-12 h-12 text-orange-400 animate-pulse" />
                   <p className="text-sm font-semibold">Připravuji kameru...</p>
                   <button
-                    onClick={startCameraScanner}
+                    onClick={() => setCameraRetry((retry) => retry + 1)}
                     className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-bold transition-colors"
                   >
                     Zapnout kameru znova
@@ -321,9 +314,6 @@ export default function QuickScannerView() {
         onClose={() => setIsModalOpen(false)}
         onSaved={() => {
           setIsModalOpen(false);
-          if (activeTab === 'camera') {
-            startCameraScanner();
-          }
         }}
       />
     </div>

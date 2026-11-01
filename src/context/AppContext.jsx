@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { INITIAL_MOCK_BOOKS } from '../services/bookService';
 import { exportBookToExternalCsvFile, sendBookToExternalEndpoint } from '../services/externalSyncService';
 
@@ -80,6 +80,14 @@ export const AppProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : true;
   });
 
+  const [externalSyncStatus, setExternalSyncStatus] = useState(null);
+  const syncRequestRef = useRef(0);
+
+  useEffect(() => {
+    syncRequestRef.current += 1;
+    setExternalSyncStatus(null);
+  }, [externalWebhookUrl]);
+
   // Persistence
   useEffect(() => {
     localStorage.setItem('bookstache_user', JSON.stringify(currentUser));
@@ -114,12 +122,17 @@ export const AppProvider = ({ children }) => {
     setCurrentUser(null);
   };
 
-  const triggerExternalSync = (book, role) => {
+  const triggerExternalSync = async (book, role) => {
     if (autoExportCsv) {
       exportBookToExternalCsvFile(book);
     }
     if (externalWebhookUrl) {
-      sendBookToExternalEndpoint(externalWebhookUrl, book, role);
+      const requestId = ++syncRequestRef.current;
+      setExternalSyncStatus({ state: 'sending', message: 'Odesílám knihu do externí tabulky…' });
+      const result = await sendBookToExternalEndpoint(externalWebhookUrl, book, role);
+      if (requestId === syncRequestRef.current) {
+        setExternalSyncStatus({ state: result.ok ? 'success' : 'error', message: result.message });
+      }
     }
   };
 
@@ -222,6 +235,7 @@ export const AppProvider = ({ children }) => {
         loans,
         borrowBook,
         returnBook,
+        externalSyncStatus,
         externalWebhookUrl,
         setExternalWebhookUrl,
         autoExportCsv,
