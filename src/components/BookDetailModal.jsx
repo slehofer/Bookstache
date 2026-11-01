@@ -3,7 +3,6 @@ import { shortBookDescription, fetchBookDescription, DESCRIPTION_MAX_LENGTH } fr
 import { useApp } from '../context/AppContext';
 import {
   BookOpen,
-  CheckCircle,
   PlusCircle,
   Bookmark,
   X,
@@ -26,7 +25,6 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved, readOn
   const [formData, setFormData] = useState(book || {});
   const [descriptionLoading, setDescriptionLoading] = useState(false);
   const descriptionEditedRef = useRef(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,12 +83,8 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved, readOn
       addBookToReaderCollection(currentUser.id, finalBook);
     }
 
-    setSaveSuccess(true);
-    setTimeout(() => {
-      setSaveSuccess(false);
-      if (onSaved) onSaved(finalBook);
-      onClose();
-    }, 1200);
+    if (onSaved) onSaved(finalBook);
+    onClose();
   };
 
   return (
@@ -146,18 +140,6 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved, readOn
           </div>
         )}
 
-        {/* Saved Toast Overlay */}
-        {saveSuccess ? (
-          <div className="p-12 text-center bg-emerald-50 flex flex-col items-center justify-center space-y-3">
-            <CheckCircle className="w-16 h-16 text-emerald-600 animate-bounce" />
-            <h3 className="text-2xl font-bold text-emerald-800">
-              {isLibrarian ? 'Kniha uložena do veřejné knihovny!' : 'Kniha přidána do vaší osobní sbírky!'}
-            </h3>
-            <p className="text-emerald-700 text-sm">
-              Údaje byly úspěšně zaznamenány.
-            </p>
-          </div>
-        ) : (
           <form onSubmit={handleSaveBook} className="p-6">
             <div className="flex flex-col md:flex-row gap-6">
 
@@ -413,7 +395,6 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved, readOn
               </button>}
             </div>
           </form>
-        )}
 
       </div>
     </div>

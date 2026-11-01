@@ -55,9 +55,11 @@ with tempfile.TemporaryDirectory(prefix='bookstache-camera-') as directory, sync
     ])
     page = browser.new_page()
     errors = []
+    downloads = []
+    page.on('download', lambda download: downloads.append(download.suggested_filename))
     page.on('pageerror', lambda e: errors.append(str(e)))
     page.add_init_script("""
-localStorage.setItem('bookstache_auto_csv', 'false');
+localStorage.setItem('bookstache_auto_csv', 'true');
 localStorage.setItem('bookstache_webhook_url', '');
 window.cameraStreams = [];
 window.cameraTracks = [];
@@ -97,6 +99,7 @@ navigator.mediaDevices.getUserMedia = async (...args) => {
     assert page.locator('video').count() == 1
     page.get_by_role('button', name='Veřejný katalog').click()
     page.wait_for_function("cameraTracks[1].readyState === 'ended'")
+    assert not downloads, downloads
     assert not errors, errors
     print('PASS: tab switch and navigation release camera; no JavaScript page errors', flush=True)
     browser.close()

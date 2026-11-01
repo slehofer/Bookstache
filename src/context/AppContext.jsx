@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { INITIAL_MOCK_BOOKS } from '../services/bookService';
-import { exportBookToExternalCsvFile, sendBookToExternalEndpoint } from '../services/externalSyncService';
+import { sendBookToExternalEndpoint } from '../services/externalSyncService';
 
 const AppContext = createContext();
 
@@ -70,14 +70,9 @@ export const AppProvider = ({ children }) => {
     ];
   });
 
-  // External sync settings (Webhook URL / Auto CSV)
+  // External sync settings (Webhook URL)
   const [externalWebhookUrl, setExternalWebhookUrl] = useState(() => {
     return localStorage.getItem('bookstache_webhook_url') || '';
-  });
-
-  const [autoExportCsv, setAutoExportCsv] = useState(() => {
-    const saved = localStorage.getItem('bookstache_auto_csv');
-    return saved ? JSON.parse(saved) : true;
   });
 
   const [externalSyncStatus, setExternalSyncStatus] = useState(null);
@@ -109,10 +104,6 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem('bookstache_webhook_url', externalWebhookUrl);
   }, [externalWebhookUrl]);
 
-  useEffect(() => {
-    localStorage.setItem('bookstache_auto_csv', JSON.stringify(autoExportCsv));
-  }, [autoExportCsv]);
-
   // Actions
   const loginUser = (user) => {
     setCurrentUser(user);
@@ -123,9 +114,6 @@ export const AppProvider = ({ children }) => {
   };
 
   const triggerExternalSync = async (book, role) => {
-    if (autoExportCsv) {
-      exportBookToExternalCsvFile(book);
-    }
     if (externalWebhookUrl) {
       const requestId = ++syncRequestRef.current;
       setExternalSyncStatus({ state: 'sending', message: 'Odesílám knihu do externí tabulky…' });
@@ -237,9 +225,7 @@ export const AppProvider = ({ children }) => {
         returnBook,
         externalSyncStatus,
         externalWebhookUrl,
-        setExternalWebhookUrl,
-        autoExportCsv,
-        setAutoExportCsv
+        setExternalWebhookUrl
       }}
     >
       {children}

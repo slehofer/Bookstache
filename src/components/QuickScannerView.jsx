@@ -356,6 +356,12 @@ export default function QuickScannerView() {
         onClose={() => setIsModalOpen(false)}
         onSaved={() => {
           setIsModalOpen(false);
+          setScannedBook(null);
+          setManualIsbn('');
+          setActiveTab('camera');
+          requestAnimationFrame(() => {
+            document.getElementById('qr-reader-region')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          });
         }}
       />
     </div>

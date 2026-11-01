@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { validateExternalEndpoint } from '../services/externalSyncService';
 import { useApp } from '../context/AppContext';
-import { Database, Link, Check, FileSpreadsheet, Settings } from 'lucide-react';
+import { Database, Link, Check, Settings } from 'lucide-react';
 
 export default function ExternalSyncConfigBanner() {
-  const { externalWebhookUrl, setExternalWebhookUrl, autoExportCsv, setAutoExportCsv, externalSyncStatus } = useApp();
+  const { externalWebhookUrl, setExternalWebhookUrl, externalSyncStatus } = useApp();
   const [isOpen, setIsOpen] = useState(false);
   const [tempUrl, setTempUrl] = useState(externalWebhookUrl);
   const [settingsError, setSettingsError] = useState('');
@@ -33,11 +33,11 @@ export default function ExternalSyncConfigBanner() {
             <p className="font-extrabold text-white text-sm flex items-center gap-2">
               Automatické ukládání do externí tabulky
               <span className="px-2 py-0.5 bg-emerald-500/30 text-emerald-200 border border-emerald-400/40 rounded-full text-[10px]">
-                {externalWebhookUrl && !endpointError ? 'Odesílání nastaveno' : autoExportCsv ? 'Pouze CSV' : 'Nenastaveno'}
+                {externalWebhookUrl && !endpointError ? 'Odesílání nastaveno' : 'Nenastaveno'}
               </span>
             </p>
             <p className="text-emerald-300 mt-0.5">
-              Po uložení knihy lze stáhnout CSV soubor nebo odeslat záznam do propojené online tabulky. CSV soubor sám online tabulku neaktualizuje.
+              Po uložení knihy se záznam odešle do propojené online tabulky, pokud je nastavena její adresa.
             </p>
           </div>
         </div>
@@ -61,19 +61,6 @@ export default function ExternalSyncConfigBanner() {
 
       {isOpen && (
         <form onSubmit={handleSaveSettings} className="mt-4 pt-4 border-t border-emerald-800 space-y-3 animate-fadeIn">
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 cursor-pointer font-bold text-white">
-              <input
-                type="checkbox"
-                checked={autoExportCsv}
-                onChange={(e) => setAutoExportCsv(e.target.checked)}
-                className="w-4 h-4 text-emerald-600 rounded border-emerald-700 focus:ring-emerald-500"
-              />
-              <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
-              Automaticky vytvářet CSV soubor tabulky po uložení knihy
-            </label>
-          </div>
-
           <div>
             <label htmlFor="external-endpoint-url" className="block font-bold text-white mb-1 flex items-center gap-1">
               <Link className="w-3.5 h-3.5 text-emerald-300" /> Adresa webové aplikace Apps Script nebo webhooku (Make, Zapier):
