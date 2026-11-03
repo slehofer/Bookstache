@@ -140,7 +140,7 @@ export const AppProvider = ({ children }) => {
   const addBookToReaderCollection = (userId, book) => {
     setReaderCollections((prev) => {
       const userList = prev[userId] || [];
-      if (userList.some(b => b.id === book.id || b.isbn === book.isbn)) {
+      if (userList.some(b => b.id === book.id || (book.isbn && b.isbn === book.isbn))) {
         return prev;
       }
       return {

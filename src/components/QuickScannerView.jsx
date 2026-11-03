@@ -2,9 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode';
 import { decodeBarcodeFromImageFile } from '../services/barcodeScanner';
 import { fetchBookDetailsByIsbn } from '../services/bookService';
+import BookSearch from './BookSearch';
 import BookDetailModal from './BookDetailModal';
 import ExternalSyncConfigBanner from './ExternalSyncConfigBanner';
-import { Camera, Upload, Keyboard, AlertCircle, Loader2, Sparkles, Scan, ArrowRight, BookOpen, Bookmark } from 'lucide-react';
+import { Camera, Upload, Keyboard, AlertCircle, Loader2, Sparkles, Scan, ArrowRight, BookOpen, Bookmark, Search } from 'lucide-react';
 
 export default function QuickScannerView() {
   const [activeTab, setActiveTab] = useState('camera'); // 'camera' | 'upload' | 'manual'
@@ -180,7 +181,7 @@ export default function QuickScannerView() {
       </section>
 
       {/* Tabs */}
-      <div className="library-tabs bg-white rounded-2xl border border-stone-200 p-2 shadow-sm grid grid-cols-3 gap-2">
+      <div className="library-tabs bg-white rounded-2xl border border-stone-200 p-2 shadow-sm grid grid-cols-2 sm:grid-cols-4 gap-2">
         <button
           onClick={() => setActiveTab('camera')}
           className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
@@ -213,10 +214,15 @@ export default function QuickScannerView() {
         >
           <Keyboard className="w-4 h-4" /> Ruční zadání ISBN
         </button>
+        <button onClick={() => setActiveTab('search')} className={`py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 ${activeTab === 'search' ? 'bg-wine-700 text-white' : 'text-stone-600 hover:bg-stone-100'}`}>
+          <Search className="w-4 h-4" /> Hledat podle názvu / autora
+        </button>
       </div>
 
       {/* Main Scanner Container */}
       <div className="bg-white rounded-2xl border border-stone-200 p-6 shadow-md relative min-h-[340px] flex flex-col items-center justify-center">
+
+        {activeTab === 'search' && <BookSearch />}
 
         {loading && (
           <div className="absolute inset-0 z-20 bg-white/90 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center gap-3">
