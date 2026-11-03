@@ -33,11 +33,20 @@ with sync_playwright() as p:
                 {'id': 'no-isbn-2', 'volumeInfo': {'title': 'Druhá kniha', 'authors': ['Test Autor']}}
             ]})
         context.route('https://www.googleapis.com/books/v1/volumes?**', api)
-        page.goto('http://bookstache.test/Bookstache/')
-        page.get_by_role('button', name='Hledat podle názvu / autora', exact=True).click()
+        page.goto('http://bookstache.test/Bookstache/#search')
+        expect(page.get_by_role('heading', name='Najděte další příběh')).to_be_visible()
+        # Both desktop and mobile navigation provide an entry to search.
+        for width in [1440, 390]:
+            page.set_viewport_size({'width': width, 'height': 900})
+            page.get_by_role('button', name='Skener & Vložení' if width == 1440 else 'Skener', exact=True).click()
+            page.get_by_role('button', name='Hledat knihy', exact=True).click()
+            expect(page.get_by_role('heading', name='Najděte další příběh')).to_be_visible()
+            assert page.url.endswith('#search')
+        page.reload()
+        expect(page.get_by_role('heading', name='Najděte další příběh')).to_be_visible()
         page.get_by_role('combobox').select_option('author')
         page.get_by_role('textbox', name='Název nebo autor', exact=True).fill('Test Autor')
-        page.get_by_role('button', name='Hledat knihy', exact=True).click()
+        page.locator('form').get_by_role('button', name='Hledat knihy', exact=True).click()
         expect(page.get_by_role('status')).to_contain_text('Nalezeno knih: 2')
         assert 'inauthor' in requests[-1]
         add_label = 'Přidat do katalogu' if role == 'librarian' else 'Přidat do sbírky'
@@ -53,7 +62,7 @@ with sync_playwright() as p:
         context.route('https://www.googleapis.com/books/v1/volumes?**', lambda route: route.fulfill(status=503, body=''))
         page.get_by_role('combobox').select_option('title')
         page.get_by_role('textbox', name='Název nebo autor', exact=True).fill('maly princ')
-        page.get_by_role('button', name='Hledat knihy', exact=True).click()
+        page.locator('form').get_by_role('button', name='Hledat knihy', exact=True).click()
         expect(page.get_by_role('button', name='Malý princ', exact=True)).to_be_visible()
         expect(page.get_by_role('alert')).to_contain_text('Online vyhledávání není dostupné')
         assert not errors, errors

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import Navbar from './components/Navbar';
+import BookSearch from './components/BookSearch';
 import QuickScannerView from './components/QuickScannerView';
 import BookCatalogTable from './components/BookCatalogTable';
 import LoansView from './components/LoansView';
@@ -9,7 +10,20 @@ import AuthModal from './components/AuthModal';
 
 function MainLayout() {
   const { currentUser } = useApp();
-  const [activeView, setActiveView] = useState('scan'); // 'scan' | 'catalog' | 'my-collection' | 'loans' | 'stats'
+  const viewFromHash = () => {
+    const view = window.location.hash.slice(1);
+    return ['search', 'scan', 'catalog', 'my-collection', 'loans', 'stats'].includes(view) ? view : 'scan';
+  };
+  const [activeView, updateActiveView] = useState(viewFromHash);
+  const setActiveView = (view) => {
+    updateActiveView(view);
+    window.location.hash = view;
+  };
+  useEffect(() => {
+    const onHashChange = () => updateActiveView(viewFromHash());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   return (
@@ -25,6 +39,7 @@ function MainLayout() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         {activeView === 'scan' && <QuickScannerView />}
+        {activeView === 'search' && <div className="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm"><BookSearch /></div>}
         {activeView === 'catalog' && <BookCatalogTable isReaderOnly={false} />}
         {activeView === 'my-collection' && <BookCatalogTable isReaderOnly={true} />}
         {activeView === 'loans' && <LoansView />}

@@ -2,6 +2,7 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import {
   Scan,
+  Search,
   BookOpen,
   Bookmark,
   HandHeart,
@@ -50,6 +51,12 @@ export default function Navbar({ activeView, setActiveView, onOpenAuthModal }) {
 
           {/* Main Desktop Navigation Menu */}
           <nav className="hidden lg:flex items-center gap-1 bg-stone-100/80 p-1.5 rounded-2xl border border-stone-200/80">
+            <button
+              onClick={() => setActiveView('search')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${activeView === 'search' ? 'bg-wine-700 text-white shadow-sm' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
+            >
+              <Search className="w-4 h-4" /> Hledat knihy
+            </button>
             <button
               onClick={() => setActiveView('scan')}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
@@ -182,6 +189,12 @@ export default function Navbar({ activeView, setActiveView, onOpenAuthModal }) {
 
       {/* Mobile Submenu Nav Bar */}
       <div className="lg:hidden border-t border-stone-200 bg-stone-50 px-4 py-2 flex items-center justify-around overflow-x-auto text-xs">
+        <button
+          onClick={() => setActiveView('search')}
+          className={`py-1.5 px-3 rounded-lg font-bold flex items-center gap-1.5 whitespace-nowrap ${activeView === 'search' ? 'bg-wine-500 text-white' : 'text-stone-600'}`}
+        >
+          <Search className="w-3.5 h-3.5" /> Hledat knihy
+        </button>
         <button
           onClick={() => setActiveView('scan')}
           className={`py-1.5 px-3 rounded-lg font-bold flex items-center gap-1.5 whitespace-nowrap ${
