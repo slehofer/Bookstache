@@ -25,6 +25,9 @@ with sync_playwright() as p:
             else:
                 route.fulfill(status=404, body='')
         context.route('http://bookstache.test/Bookstache/**', serve)
+        # All online providers are controlled; no test can silently use saved data or a live service.
+        context.route('https://openlibrary.org/**', lambda route: route.fulfill(json={'docs': []}))
+        context.route('https://www.knihovny.cz/api/v1/search?**', lambda route: route.fulfill(json={'records': []}))
         requests = []
         def api(route):
             requests.append(route.request.url)
@@ -57,15 +60,49 @@ with sync_playwright() as p:
         data = page.evaluate('(key) => JSON.parse(localStorage.getItem(key))', key)
         books = data if role == 'librarian' else data[user['id']]
         assert all(any(book['title'] == title for book in books) for title in ['Nová kniha', 'Druhá kniha'])
-        # API failure preserves accent-insensitive local title search.
+        # A Google rate limit still returns entirely new books from independent catalogs.
         context.unroute('https://www.googleapis.com/books/v1/volumes?**', api)
-        context.route('https://www.googleapis.com/books/v1/volumes?**', lambda route: route.fulfill(status=503, body=''))
+        context.route('https://www.googleapis.com/books/v1/volumes?**', lambda route: route.fulfill(status=429, body=''))
+        provider_requests = []
+        def open_library(route):
+            provider_requests.append(route.request.url)
+            route.fulfill(json={'docs': [{'key': '/works/OL1W', 'title': 'Novinka z Open Library', 'author_name': ['Nový Autor']}]})
+        def knihovny(route):
+            provider_requests.append(route.request.url)
+            route.fulfill(json={'records': [{'id': 'record-2', 'title': 'Novinka z české knihovny', 'authors': {'primary': {'Nový Autor': {}}}}]})
+        context.route('https://openlibrary.org/**', open_library)
+        context.route('https://www.knihovny.cz/api/v1/search?**', knihovny)
+        page.get_by_role('textbox', name='Název nebo autor', exact=True).fill('Nový Autor')
+        page.locator('form').get_by_role('button', name='Hledat knihy', exact=True).click()
+        expect(page.get_by_role('status')).to_contain_text('Nalezeno knih: 2')
+        assert any('author=' in url for url in provider_requests)
+        assert any('type=Author' in url for url in provider_requests)
+        for title in ['Novinka z Open Library', 'Novinka z české knihovny']:
+            card = page.get_by_role('article').filter(has=page.get_by_role('button', name=title, exact=True))
+            expect(card).to_be_visible()
+            card.get_by_role('button', name=add_label, exact=True).click()
+        # Failure of every provider is clearly labelled; manual entry remains available.
+        context.route('https://openlibrary.org/**', lambda route: route.fulfill(status=503, body=''))
+        context.route('https://www.knihovny.cz/api/v1/search?**', lambda route: route.fulfill(status=503, body=''))
         page.get_by_role('combobox').select_option('title')
         page.get_by_role('textbox', name='Název nebo autor', exact=True).fill('maly princ')
         page.locator('form').get_by_role('button', name='Hledat knihy', exact=True).click()
         expect(page.get_by_role('button', name='Malý princ', exact=True)).to_be_visible()
-        expect(page.get_by_role('alert')).to_contain_text('Online vyhledávání není dostupné')
+        expect(page.get_by_role('alert')).to_contain_text('Online katalogy se nepodařilo načíst')
+        for title in ['Ručně vložená kniha', 'Další ručně vložená kniha']:
+            page.get_by_role('button', name='Vložit novou knihu ručně', exact=True).click()
+            form = page.get_by_role('form', name='Nová kniha')
+            form.get_by_role('textbox', name='Název knihy').fill(title)
+            form.get_by_role('textbox', name='Autor', exact=False).fill('Úplně nový autor')
+            form.get_by_role('button', name='Uložit novou knihu', exact=False).click()
+            expect(form).not_to_be_visible()
+            expect(page.get_by_role('status')).to_contain_text(title)
+        page.reload()
+        data = page.evaluate('(key) => JSON.parse(localStorage.getItem(key))', key)
+        books = data if role == 'librarian' else data[user['id']]
+        assert all(any(book['title'] == title for book in books) for title in [
+            'Novinka z Open Library', 'Novinka z české knihovny', 'Ručně vložená kniha', 'Další ručně vložená kniha'])
         assert not errors, errors
-        print(f'PASS: {role}: author search, two books without ISBN, duplicate prevention, persistence, local fallback')
+        print(f'PASS: {role}: new online books, Google 429 fallback, author queries, duplicate prevention, manual books without ISBN, persistence after reload')
         context.close()
     browser.close()
