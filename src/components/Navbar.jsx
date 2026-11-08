@@ -33,11 +33,13 @@ export default function Navbar({ activeView, setActiveView, onOpenAuthModal }) {
               onClick={() => setActiveView('scan')}
               className="flex items-center gap-2 sm:gap-3 group text-left"
             >
-              <div className="library-mark w-9 h-10 sm:w-11 sm:h-12 rounded-xl bg-wine-700 p-0.5 shadow-md group-hover:-rotate-3 transition-transform">
-                <div className="w-full h-full bg-wine-700 rounded-[10px] flex items-center justify-center text-parchment-400">
-                  <BookOpen className="w-6 h-6" />
-                </div>
-              </div>
+              <img
+                src={`${import.meta.env.BASE_URL}favicon.svg?v=books-mustache`}
+                alt="Kniha s knírkem"
+                width="48"
+                height="48"
+                className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-xl shadow-md group-hover:-rotate-3 transition-transform"
+              />
               <div>
                 <span className="book-wordmark text-xl sm:text-2xl font-serif font-semibold tracking-tight text-wine-800 flex items-center gap-1">
                   Bookstache <span className="text-wine-600 text-3xl font-serif">.</span>
