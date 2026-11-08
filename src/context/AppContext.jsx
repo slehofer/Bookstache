@@ -151,6 +151,42 @@ export const AppProvider = ({ children }) => {
     triggerExternalSync(book, 'ctenar');
   };
 
+  // A duplicate is another physical copy: keep bibliographic data and ISBN,
+  // but give it its own identity and availability, independent of the original loan.
+  const createBookCopy = (book) => ({
+    ...book,
+    id: `copy-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`,
+    duplicatedFrom: book.duplicatedFrom || book.id,
+    createdAt: new Date().toISOString(),
+    addedBy: currentUser.name,
+    isAvailable: true,
+    borrowedBy: null,
+    dueDate: null
+  });
+
+  const duplicateBookInPublicCatalog = (bookId) => {
+    if (currentUser?.role !== 'librarian') return null;
+    const original = publicCatalog.find(book => book.id === bookId);
+    if (!original) return null;
+    const copy = createBookCopy(original);
+    addBookToPublicCatalog(copy);
+    return copy;
+  };
+
+  const duplicateBookInReaderCollection = (bookId) => {
+    if (!currentUser) return null;
+    const original = (readerCollections[currentUser.id] || []).find(book => book.id === bookId);
+    if (!original) return null;
+    const copy = createBookCopy(original);
+    // Only deliberate duplication bypasses the normal ISBN duplicate check.
+    setReaderCollections(prev => ({
+      ...prev,
+      [currentUser.id]: [copy, ...(prev[currentUser.id] || [])]
+    }));
+    triggerExternalSync(copy, 'ctenar');
+    return copy;
+  };
+
   const removeBookFromReaderCollection = (userId, bookId) => {
     setReaderCollections((prev) => ({
       ...prev,
@@ -217,9 +253,11 @@ export const AppProvider = ({ children }) => {
         addBookToPublicCatalog,
         updateBookInPublicCatalog,
         deleteBookFromPublicCatalog,
+        duplicateBookInPublicCatalog,
         readerCollections,
         addBookToReaderCollection,
         removeBookFromReaderCollection,
+        duplicateBookInReaderCollection,
         loans,
         borrowBook,
         returnBook,

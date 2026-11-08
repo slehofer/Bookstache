@@ -6,6 +6,7 @@ import {
   Filter,
   Download,
   Trash2,
+  Copy,
   HandHeart,
   CheckCircle,
   XCircle,
@@ -23,6 +24,8 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
     currentUser,
     publicCatalog,
     deleteBookFromPublicCatalog,
+    duplicateBookInPublicCatalog,
+    duplicateBookInReaderCollection,
     readerCollections,
     removeBookFromReaderCollection,
     borrowBook
@@ -39,6 +42,13 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
   const [sortOrder, setSortOrder] = useState('asc');
 
   const [detailBook, setDetailBook] = useState(null);
+  const [copyMessage, setCopyMessage] = useState('');
+  const duplicateBook = (book) => {
+    const copy = isReaderOnly
+      ? duplicateBookInReaderCollection(book.id)
+      : duplicateBookInPublicCatalog(book.id);
+    if (copy) setCopyMessage(`Vytvořen další exemplář knihy „${copy.title}“. Nový exemplář je dostupný.`);
+  };
 
   // Borrower modal state
   const [borrowModalBook, setBorrowModalBook] = useState(null);
@@ -205,6 +215,8 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
         </div>
       </div>
 
+      <p role="status" aria-live="polite" className="text-sm text-forest-700">{copyMessage}</p>
+
       {/* Filter and Search Bar */}
       <div className="bg-parchment-50/60 p-4 rounded-2xl border border-parchment-200/80 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -345,6 +357,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
                         className="font-serif font-semibold text-stone-900 text-base leading-tight text-left hover:text-wine-700 hover:underline focus-visible:underline"
                       >{book.title}</button>
                       <p className="text-stone-600 font-semibold mt-0.5">{book.author}</p>
+                      {book.duplicatedFrom && <p className="text-[10px] text-forest-700 font-bold mt-1">Další exemplář</p>}
                       <p className="text-[10px] font-mono text-stone-400 mt-1">ISBN: {book.isbn}</p>
                     </td>
 
@@ -381,6 +394,18 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
                               <XCircle className="w-3.5 h-3.5" /> Vypůjčeno
                             </span>
                           )
+                        )}
+
+                        {((isLibrarian && !isReaderOnly) || (isReaderOnly && currentUser)) && (
+                          <button
+                            type="button"
+                            onClick={() => duplicateBook(book)}
+                            aria-label={`Duplikovat knihu: ${book.title}`}
+                            title="Vytvořit další exemplář knihy"
+                            className="p-1.5 bg-parchment-100 text-wine-700 hover:bg-parchment-200 rounded-lg transition-colors flex items-center gap-1 font-bold text-xs"
+                          >
+                            <Copy className="w-3.5 h-3.5" /> Duplikovat
+                          </button>
                         )}
 
                         {/* Librarian specific action */}
