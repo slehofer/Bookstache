@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode';
+import { BrowserMultiFormatReader } from '@zxing/library';
 import { decodeBarcodeFromImageFile } from '../services/barcodeScanner';
 import { fetchBookDetailsByIsbn } from '../services/bookService';
 import BookSearch from './BookSearch';
@@ -18,100 +18,112 @@ export default function QuickScannerView() {
   const [awaitingNewCode, setAwaitingNewCode] = useState(false);
 
   const fileInputRef = useRef(null);
+  const cameraVideoRef = useRef(null);
   const cameraBlockedRef = useRef(false);
-  const cameraPauseRef = useRef(null);
   const cameraQueueRef = useRef(Promise.resolve());
   const [cameraRetry, setCameraRetry] = useState(0);
 
-  // Serialize start/stop, including starts still waiting for camera permission.
-  // Each effect owns its scanner so an old cleanup cannot stop a new session.
   useEffect(() => {
     if (activeTab !== 'camera') return;
 
+    const video = cameraVideoRef.current;
+    const reader = new BrowserMultiFormatReader();
     let cancelled = false;
+    let stream;
+    let scanTimer;
     let lastCode = null;
     let lastSeen = 0;
-    let scanner;
-    let started = false;
     setCameraActive(false);
     setErrorMsg('');
     setAwaitingNewCode(false);
 
-    const syncPause = () => {
-      if (!started || cancelled) return;
-      if (cameraBlockedRef.current && scanner.getState() === Html5QrcodeScannerState.SCANNING) {
-        // Keep the video and its MediaStream alive; pause decoding only.
-        scanner.pause(false);
-      } else if (!cameraBlockedRef.current && scanner.getState() === Html5QrcodeScannerState.PAUSED) {
+    const scanFrame = () => {
+      if (cameraBlockedRef.current) {
         lastSeen = Date.now();
-        scanner.resume();
+        return;
       }
-    };
-    cameraPauseRef.current = syncPause;
+      if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
 
-    const start = cameraQueueRef.current.then(async () => {
-      if (cancelled) return;
+      let code;
       try {
-        scanner = new Html5Qrcode('qr-reader-region');
-        await scanner.start(
-          { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 280, height: 160 } },
-          (decodedText) => {
-            if (cancelled || cameraBlockedRef.current) return;
-            lastSeen = Date.now();
-            if (decodedText === lastCode) return;
-            lastCode = decodedText;
-            setAwaitingNewCode(true);
-            cameraBlockedRef.current = true;
-            syncPause();
-            handleCodeDetected(decodedText);
-          },
-          () => {
-            if (cancelled || cameraBlockedRef.current) return;
-            // Re-arm the same ISBN only after it has left the viewfinder.
-            if (lastCode && Date.now() - lastSeen > 1200) {
-              lastCode = null;
-              setAwaitingNewCode(false);
-            }
-          }
-        );
-        started = true;
-        if (!cancelled) {
-          syncPause();
-          setCameraActive(true);
+        // Read the camera's original pixels, independent of the preview size.
+        code = reader.decode(video).getText();
+      } catch {
+        // Re-arm the same ISBN only after it has left the viewfinder.
+        if (lastCode && Date.now() - lastSeen > 1200) {
+          lastCode = null;
+          setAwaitingNewCode(false);
         }
-      } catch (err) {
-        if (!cancelled) {
-          setCameraActive(false);
-          setErrorMsg('Kamera nebyla nalezena nebo přístup k ní byl odmítnut. Můžete nahrát fotku z galerie nebo zadat ISBN ručně.');
-        }
+        return;
       }
-    });
-    cameraQueueRef.current = start;
+
+      lastSeen = Date.now();
+      if (code === lastCode) return;
+      lastCode = code;
+      setAwaitingNewCode(true);
+      handleCodeDetected(code);
+    };
+
+    const stopCamera = () => {
+      clearInterval(scanTimer);
+      if (!stream) return;
+      for (const track of stream.getTracks()) {
+        track.removeEventListener('ended', showCameraError);
+        track.stop();
+      }
+      if (video.srcObject === stream) video.srcObject = null;
+      stream = null;
+    };
+
+    const showCameraError = () => {
+      if (cancelled) return;
+      stopCamera();
+      setCameraActive(false);
+      setAwaitingNewCode(false);
+      setErrorMsg('Kameru se nepodařilo spustit nebo se přerušilo spojení. Zkontrolujte přístup ke kameře, případně nahrajte fotku nebo zadejte ISBN ručně.');
+    };
+
+    // Wait for any previous permission request before asking for a new stream.
+    const acquire = cameraQueueRef.current.then(async () => {
+      if (cancelled) return;
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      });
+      if (cancelled) stopCamera();
+    }).catch(showCameraError);
+    cameraQueueRef.current = acquire;
+
+    acquire.then(async () => {
+      if (!stream) return;
+      for (const track of stream.getVideoTracks()) {
+        track.addEventListener('ended', showCameraError);
+      }
+      video.srcObject = stream;
+      await video.play();
+      if (!stream) return;
+      setCameraActive(true);
+      scanTimer = setInterval(scanFrame, 100);
+    }).catch(showCameraError);
+
+    // ZXing sizes its canvas on first use. Recreate it if the camera rotates.
+    const resetReader = () => reader.reset();
+    video.addEventListener('resize', resetReader);
 
     return () => {
       cancelled = true;
-      if (cameraPauseRef.current === syncPause) cameraPauseRef.current = null;
-      setCameraActive(false);
-      cameraQueueRef.current = start.then(async () => {
-        if (!scanner) return;
-        if (started) await scanner.stop();
-        scanner.clear();
-      }).catch(() => {
-        // Keep the queue usable if a disconnected camera fails to stop.
-      });
+      video.removeEventListener('resize', resetReader);
+      stopCamera();
     };
   }, [activeTab, cameraRetry]);
 
   useEffect(() => {
     cameraBlockedRef.current = loading || isModalOpen;
-    cameraPauseRef.current?.();
   }, [loading, isModalOpen]);
 
   const handleCodeDetected = async (code) => {
     if (!code) return;
     cameraBlockedRef.current = true;
-    cameraPauseRef.current?.();
     setLoading(true);
     setErrorMsg('');
     try {
@@ -236,18 +248,22 @@ export default function QuickScannerView() {
         <div hidden={activeTab !== 'camera'} className="w-full">
           <div className="w-full flex flex-col items-center">
             <div className="relative w-full max-w-md overflow-hidden rounded-xl border-2 border-dashed border-wine-400 bg-stone-900 shadow-inner">
-              <div id="qr-reader-region" className="w-full min-h-[250px]" />
+              <div id="qr-reader-region" className="w-full min-h-[250px]">
+                <video ref={cameraVideoRef} muted playsInline className="block w-full" />
+              </div>
 
               {!cameraActive && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-stone-900/90 text-white space-y-3">
-                  <Camera className="w-12 h-12 text-wine-400 animate-pulse" />
-                  <p className="text-sm font-semibold">Připravuji kameru...</p>
-                  <button
-                    onClick={() => setCameraRetry((retry) => retry + 1)}
-                    className="px-4 py-2 bg-wine-600 hover:bg-wine-700 text-white rounded-lg text-xs font-bold transition-colors"
-                  >
-                    Zapnout kameru znova
-                  </button>
+                  <Camera className="w-12 h-12 text-wine-400" />
+                  <p className="text-sm font-semibold">{errorMsg ? 'Kamera není k dispozici' : 'Připravuji kameru...'}</p>
+                  {errorMsg && (
+                    <button
+                      onClick={() => setCameraRetry((retry) => retry + 1)}
+                      className="px-4 py-2 bg-wine-600 hover:bg-wine-700 text-white rounded-lg text-xs font-bold transition-colors"
+                    >
+                      Zapnout kameru znova
+                    </button>
+                  )}
                 </div>
               )}
             </div>

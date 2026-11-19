@@ -1,4 +1,4 @@
-"""Camera regression using the real html5-qrcode decoder and Chromium media API.
+"""Camera regression using the real ZXing decoder and Chromium media API.
 
 Run Vite first, then: python scripts/test_camera.py [http://127.0.0.1:5175/Bookstache/]
 Requires Python Playwright and Chromium (provided by the cloud environment).
@@ -15,11 +15,16 @@ from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 CODES = ['9788020719805', '9788073816216', '9788074914101']
+# EAN-13 modules for the first ISBN, including start, middle and end guards.
+EAN13 = (
+    '101' '0111011' '0001001' '0001001' '0001101' '0011011' '0001101'
+    '01010' '1000100' '1100110' '1110100' '1001000' '1110010' '1001110' '101'
+)
 URL = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:5175/Bookstache/'
 
 
 def write_video(path):
-    # The scanner accepts both QR and linear barcodes containing an ISBN.
+    # Follow a linear ISBN barcode with two QR codes to exercise both formats.
     source = """
 import zxing from '@zxing/library';
 const codes = %s;
@@ -27,9 +32,12 @@ console.log(JSON.stringify(codes.map(code => {
  const m = new zxing.QRCodeWriter().encode(code, zxing.BarcodeFormat.QR_CODE, 160, 160, new Map());
  return Array.from({length:160}, (_,y) => Array.from({length:160}, (_,x) => m.get(x,y)));
 })));
-""" % json.dumps(CODES)
+""" % json.dumps(CODES[1:])
     matrices = json.loads(subprocess.check_output(
         ['node', '--input-type=module', '-e', source], cwd=ROOT, text=True))
+    # Two camera pixels per module are lost when the decoder uses the mobile preview size.
+    barcode = [int(module) for module in EAN13 for _ in range(2)]
+    matrices.insert(0, [barcode] * 120)
     blank = bytes([235]) * (640 * 480)
     chroma = bytes([128]) * (640 * 480 // 2)
     with path.open('wb') as video:
@@ -38,9 +46,11 @@ console.log(JSON.stringify(codes.map(code => {
             # Two seconds without a code, then six seconds holding the code.
             # Holding a code must not immediately reopen its modal after save.
             image = bytearray(blank)
+            top = (480 - len(matrix)) // 2
+            left = (640 - len(matrix[0])) // 2
             for y, row in enumerate(matrix):
                 for x, black in enumerate(row):
-                    image[(160 + y) * 640 + 240 + x] = 16 if black else 235
+                    image[(top + y) * 640 + left + x] = 16 if black else 235
             for frame, count in [(blank, 20), (image, 60)]:
                 for _ in range(count):
                     video.write(b'FRAME\n' + frame + chroma)
@@ -53,7 +63,7 @@ with tempfile.TemporaryDirectory(prefix='bookstache-camera-') as directory, sync
         '--no-sandbox', '--use-fake-ui-for-media-stream',
         '--use-fake-device-for-media-stream', f'--use-file-for-fake-video-capture={video}'
     ])
-    page = browser.new_page()
+    page = browser.new_page(viewport={'width': 320, 'height': 720})
     errors = []
     downloads = []
     page.on('download', lambda download: downloads.append(download.suggested_filename))
@@ -97,7 +107,7 @@ navigator.mediaDevices.getUserMedia = async (...args) => {
     page.wait_for_function('cameraStreams.length === 2')
     page.wait_for_function("document.querySelector('video')?.readyState >= 2")
     assert page.locator('video').count() == 1
-    page.get_by_role('button', name='Veřejný katalog').click()
+    page.get_by_role('button', name='Katalog (').click()
     page.wait_for_function("cameraTracks[1].readyState === 'ended'")
     assert not downloads, downloads
     assert not errors, errors
