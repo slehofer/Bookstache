@@ -22,7 +22,7 @@ export default function AuthModal({ isOpen, onClose }) {
 
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="local-profile-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl border border-parchment-200 w-full max-w-lg overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl border border-parchment-200 w-full max-w-lg max-h-[90dvh] overflow-y-auto">
         {/* Header with Orange/Green Branding */}
         <div className="bg-forest-800 border-b-4 border-parchment-400 p-6 text-white text-center relative">
           <button type="button" onClick={onClose} aria-label="Zavřít" className="absolute right-4 top-4 p-1.5 rounded-full hover:bg-white/20">
@@ -35,6 +35,12 @@ export default function AuthModal({ isOpen, onClose }) {
           <p className="text-parchment-100 text-sm mt-1">
             Profily a sbírky se ukládají v tomto prohlížeči.
           </p>
+        </div>
+
+        <div className="border-b border-stone-200 bg-parchment-50 px-6 py-4">
+          <a href="https://bookstache-ctenari.jauntydoor33.chatgpt.site/" className="inline-flex items-center gap-2 text-sm font-bold text-wine-700 underline">
+            <LogIn className="h-4 w-4" /> Účet čtenáře na více zařízeních
+          </a>
         </div>
 
         {/* Tabs */}
