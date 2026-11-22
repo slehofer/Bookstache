@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { shortBookDescription, fetchBookDescription, DESCRIPTION_MAX_LENGTH } from '../services/bookDescription';
+import { sameBook } from '../services/bookSearch';
 import { useApp } from '../context/AppContext';
 import {
   BookOpen,
@@ -19,8 +20,16 @@ import {
   Info
 } from 'lucide-react';
 
-export default function BookDetailModal({ book, isOpen, onClose, onSaved, readOnly = false }) {
-  const { currentUser, addBookToPublicCatalog, addBookToReaderCollection } = useApp();
+export default function BookDetailModal({ book: incomingBook, isOpen, onClose, onSaved, readOnly = false }) {
+  const {
+    currentUser, publicCatalog, readerCollections,
+    addBookToPublicCatalog, addBookToReaderCollection,
+    duplicateBookInPublicCatalog, duplicateBookInReaderCollection
+  } = useApp();
+  const isLibrarian = currentUser?.role === 'librarian';
+  const collection = isLibrarian ? publicCatalog : readerCollections[currentUser?.id];
+  const existingBook = isOpen && !readOnly && incomingBook && collection?.find(entry => sameBook(entry, incomingBook));
+  const book = existingBook || incomingBook;
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(book || {});
   const [descriptionLoading, setDescriptionLoading] = useState(false);
@@ -42,18 +51,16 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved, readOn
         });
       }
       // Auto-enable edit mode if book details were not found automatically
-      if (!readOnly && !book.isFound) {
+      if (!readOnly && !existingBook && !book.isFound) {
         setIsEditing(true);
       } else {
         setIsEditing(false);
       }
     }
     return () => { cancelled = true; };
-  }, [book, isOpen, readOnly]);
+  }, [book, existingBook, isOpen, readOnly]);
 
   if (!isOpen || !book) return null;
-
-  const isLibrarian = currentUser?.role === 'librarian';
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -61,6 +68,16 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved, readOn
 
   const handleSaveBook = (e) => {
     e.preventDefault();
+    if (!currentUser) return;
+
+    if (existingBook) {
+      const copy = isLibrarian ? duplicateBookInPublicCatalog(existingBook.id) : duplicateBookInReaderCollection(existingBook.id);
+      if (copy) {
+        onSaved?.(copy);
+        onClose();
+      }
+      return;
+    }
 
     // Do not allow saving empty title/author
     if (!formData.title?.trim() || !formData.author?.trim()) {
@@ -99,11 +116,11 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved, readOn
             </div>
             <div>
               <h2 id="book-detail-title" className="text-xl font-bold">
-                {readOnly ? 'Detail knihy' : book.isFound ? 'Nalezená kniha' : 'Kniha nenalezena v databázích'}
+                {readOnly ? 'Detail knihy' : existingBook ? 'Kniha už je uložená' : book.isFound ? 'Nalezená kniha' : 'Kniha nenalezena v databázích'}
               </h2>
-              <p className="text-xs text-parchment-100">
+              {!existingBook && <p className="text-xs text-parchment-100">
                 {book.apiSource ? `Zdroj dat: ${book.apiSource}` : readOnly ? 'Informace o knize' : 'Můžete ručně doplnit potřebné údaje'}
-              </p>
+              </p>}
             </div>
           </div>
           <button
@@ -115,8 +132,15 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved, readOn
           </button>
         </div>
 
+        {existingBook && (
+          <div role="alert" className="bg-parchment-100 border-b border-parchment-200 p-3 px-6 text-sm text-parchment-900 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+            <p>Kniha „{existingBook.title}“ už je {isLibrarian ? 've veřejném katalogu' : 've vaší osobní sbírce'}.</p>
+          </div>
+        )}
+
         {/* Diagnostics banner */}
-        {book.diagnostics && book.diagnostics.length > 0 && (
+        {!existingBook && book.diagnostics && book.diagnostics.length > 0 && (
           <div className="bg-parchment-50 border-b border-parchment-200 p-3 px-6 text-xs text-parchment-900 flex items-start gap-2">
             <Info className="w-4 h-4 text-parchment-600 shrink-0 mt-0.5" />
             <div>
@@ -131,7 +155,7 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved, readOn
         )}
 
         {/* Not Found Warning Banner */}
-        {!readOnly && !book.isFound && (
+        {!readOnly && !existingBook && !book.isFound && (
           <div className="bg-wine-100 border-b border-wine-200 p-3 px-6 text-xs text-wine-900 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-wine-600 shrink-0" />
             <p className="font-semibold">
@@ -182,7 +206,7 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved, readOn
                   </div>
                 </div>
 
-                {!readOnly && <button
+                {!readOnly && !existingBook && <button
                   type="button"
                   onClick={() => setIsEditing(!isEditing)}
                   className="mt-3 text-xs font-semibold text-wine-700 hover:text-wine-800 bg-wine-100/70 hover:bg-wine-100 px-3 py-1.5 rounded-lg border border-wine-200 flex items-center gap-1.5 transition-colors"
@@ -384,7 +408,11 @@ export default function BookDetailModal({ book, isOpen, onClose, onSaved, readOn
                     : 'bg-forest-600 hover:bg-forest-700 shadow-forest-600/20'
                 }`}
               >
-                {isLibrarian ? (
+                {existingBook ? (
+                  <>
+                    <PlusCircle className="w-4 h-4" /> Uložit další výtisk
+                  </>
+                ) : isLibrarian ? (
                   <>
                     <PlusCircle className="w-4 h-4" /> Uložit do veřejné knihovny
                   </>

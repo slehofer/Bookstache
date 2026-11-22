@@ -1,5 +1,22 @@
 import { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } from '@zxing/library';
 
+export function isNumericIsbn(code) {
+  if (typeof code !== 'string') return false;
+
+  if (/^[0-9]{10}$/.test(code)) {
+    const sum = [...code].reduce((total, digit, index) => total + Number(digit) * (10 - index), 0);
+    return sum % 11 === 0;
+  }
+
+  // The 979-0 range is reserved for ISMNs.
+  if (/^(?:978[0-9]|979[1-9])[0-9]{9}$/.test(code)) {
+    const sum = [...code].reduce((total, digit, index) => total + Number(digit) * (index % 2 === 0 ? 1 : 3), 0);
+    return sum % 10 === 0;
+  }
+
+  return false;
+}
+
 // Helper to decode barcode from image file (uploaded from gallery / device)
 export async function decodeBarcodeFromImageFile(file) {
   return new Promise((resolve, reject) => {
@@ -41,5 +58,5 @@ export async function decodeBarcodeFromImageFile(file) {
 // Clean ISBN string (remove hyphens, spaces)
 export function sanitizeIsbn(isbnStr) {
   if (!isbnStr) return '';
-  return isbnStr.replace(/[^0-9X]/gi, '');
+  return String(isbnStr).replace(/[^0-9X]/gi, '');
 }

@@ -1,13 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/library';
-import { decodeBarcodeFromImageFile } from '../services/barcodeScanner';
-import { fetchBookDetailsByIsbn } from '../services/bookService';
+import { useApp } from '../context/AppContext';
+import { decodeBarcodeFromImageFile, isNumericIsbn } from '../services/barcodeScanner';
+import { convertToIsbn13, fetchBookDetailsByIsbn } from '../services/bookService';
 import BookSearch from './BookSearch';
 import BookDetailModal from './BookDetailModal';
 import ExternalSyncConfigBanner from './ExternalSyncConfigBanner';
 import { Camera, Upload, Keyboard, AlertCircle, Loader2, Sparkles, Scan, ArrowRight, BookOpen, Bookmark, Search } from 'lucide-react';
 
 export default function QuickScannerView() {
+  const { currentUser, publicCatalog, readerCollections } = useApp();
   const [activeTab, setActiveTab] = useState('camera'); // 'camera' | 'upload' | 'manual'
   const [manualIsbn, setManualIsbn] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,6 +24,12 @@ export default function QuickScannerView() {
   const cameraBlockedRef = useRef(false);
   const cameraQueueRef = useRef(Promise.resolve());
   const [cameraRetry, setCameraRetry] = useState(0);
+  const collection = currentUser?.role === 'librarian' ? publicCatalog : readerCollections[currentUser?.id];
+  const collectionRef = useRef(collection);
+
+  useEffect(() => {
+    collectionRef.current = collection;
+  }, [collection]);
 
   useEffect(() => {
     if (activeTab !== 'camera') return;
@@ -49,6 +57,9 @@ export default function QuickScannerView() {
         // Read the camera's original pixels, independent of the preview size.
         code = reader.decode(video).getText();
       } catch {
+        // ZXing throws when it cannot decode a frame.
+      }
+      if (!isNumericIsbn(code)) {
         // Re-arm the same ISBN only after it has left the viewfinder.
         if (lastCode && Date.now() - lastSeen > 1200) {
           lastCode = null;
@@ -127,7 +138,9 @@ export default function QuickScannerView() {
     setLoading(true);
     setErrorMsg('');
     try {
-      const bookData = await fetchBookDetailsByIsbn(code);
+      const isbn = convertToIsbn13(code);
+      const existingBook = isbn && collectionRef.current?.find(book => convertToIsbn13(book.isbn) === isbn);
+      const bookData = existingBook || await fetchBookDetailsByIsbn(code);
       setScannedBook(bookData);
       setIsModalOpen(true);
     } catch (err) {
@@ -146,6 +159,10 @@ export default function QuickScannerView() {
     setErrorMsg('');
     try {
       const code = await decodeBarcodeFromImageFile(file);
+      if (!isNumericIsbn(code)) {
+        setErrorMsg('Vyberte fotku s platným číselným ISBN o 10 nebo 13 číslicích.');
+        return;
+      }
       await handleCodeDetected(code);
     } catch (err) {
       setErrorMsg(err.message || 'Nepodařilo se načíst kód z vloženého obrázku.');
@@ -270,7 +287,7 @@ export default function QuickScannerView() {
             <p className="text-xs text-stone-500 mt-3 font-medium">
               {awaitingNewCode
                 ? 'Kód načten. Odsuňte knihu z obrazu a přiložte další.'
-                : 'Zamiřte kamerou na čárový nebo ISBN kód na zadní straně knihy.'}
+                : 'Zamiřte kamerou na ISBN knihy. Skener čte kódy o 10 nebo 13 číslicích.'}
             </p>
           </div>
         </div>
@@ -282,7 +299,7 @@ export default function QuickScannerView() {
               <Upload className="w-8 h-8" />
             </div>
             <h3 className="font-bold text-stone-800 text-base mb-1">
-              Vyberte fotku s čárovým kódem
+              Vyberte fotku s ISBN knihy
             </h3>
             <p className="text-xs text-stone-500 mb-6">
               Podporuje snímky z mobilu i z fotoaparátu (JPG, PNG, WEBP)
