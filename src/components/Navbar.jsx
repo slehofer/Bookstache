@@ -1,8 +1,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import {
-  Scan,
-  Search,
+  BookPlus,
   BookOpen,
   CalendarDays,
   Bookmark,
@@ -31,7 +30,7 @@ export default function Navbar({ activeView, setActiveView, onOpenAuthModal }) {
           {/* Logo & Branding */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setActiveView('scan')}
+              onClick={() => setActiveView('add-books')}
               className="flex items-center gap-2 sm:gap-3 group text-left"
             >
               <img
@@ -55,10 +54,11 @@ export default function Navbar({ activeView, setActiveView, onOpenAuthModal }) {
           {/* Main Desktop Navigation Menu */}
           <nav aria-label="Hlavní navigace" className="hidden xl:flex items-center gap-1 bg-stone-100/80 p-1.5 rounded-2xl border border-stone-200/80">
             <button
-              onClick={() => setActiveView('search')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${activeView === 'search' ? 'bg-wine-700 text-white shadow-sm' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
+              onClick={() => setActiveView('add-books')}
+              aria-current={activeView === 'add-books' ? 'page' : undefined}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${activeView === 'add-books' ? 'bg-wine-700 text-white shadow-sm' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
             >
-              <Search className="w-4 h-4" /> Hledat knihy
+              <BookPlus className="w-4 h-4" aria-hidden="true" /> Přidat knihy
             </button>
             <button
               onClick={() => setActiveView('daily-book')}
@@ -66,17 +66,6 @@ export default function Navbar({ activeView, setActiveView, onOpenAuthModal }) {
               className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${activeView === 'daily-book' ? 'bg-wine-700 text-white shadow-sm' : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'}`}
             >
               <CalendarDays className="w-4 h-4" aria-hidden="true" /> Kniha dne
-            </button>
-            <button
-              onClick={() => setActiveView('scan')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                activeView === 'scan'
-                  ? 'bg-wine-700 text-white shadow-sm'
-                  : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
-              }`}
-            >
-              <Scan className="w-4 h-4" />
-              Skener & Vložení
             </button>
 
             <button
@@ -200,10 +189,11 @@ export default function Navbar({ activeView, setActiveView, onOpenAuthModal }) {
       {/* Mobile Submenu Nav Bar */}
       <nav aria-label="Hlavní navigace" className="xl:hidden border-t border-stone-200 bg-stone-50 px-2 py-2 flex flex-wrap items-center justify-center gap-1 text-xs">
         <button
-          onClick={() => setActiveView('search')}
-          className={`py-1.5 px-3 rounded-lg font-bold flex items-center gap-1.5 whitespace-nowrap ${activeView === 'search' ? 'bg-wine-500 text-white' : 'text-stone-600'}`}
+          onClick={() => setActiveView('add-books')}
+          aria-current={activeView === 'add-books' ? 'page' : undefined}
+          className={`py-1.5 px-3 rounded-lg font-bold flex items-center gap-1.5 whitespace-nowrap ${activeView === 'add-books' ? 'bg-wine-500 text-white' : 'text-stone-600'}`}
         >
-          <Search className="w-3.5 h-3.5" /> Hledat knihy
+          <BookPlus className="w-3.5 h-3.5" aria-hidden="true" /> Přidat knihy
         </button>
         <button
           onClick={() => setActiveView('daily-book')}
@@ -211,14 +201,6 @@ export default function Navbar({ activeView, setActiveView, onOpenAuthModal }) {
           className={`py-1.5 px-3 rounded-lg font-bold flex items-center gap-1.5 whitespace-nowrap ${activeView === 'daily-book' ? 'bg-wine-500 text-white' : 'text-stone-600'}`}
         >
           <CalendarDays className="w-3.5 h-3.5" aria-hidden="true" /> Kniha dne
-        </button>
-        <button
-          onClick={() => setActiveView('scan')}
-          className={`py-1.5 px-3 rounded-lg font-bold flex items-center gap-1.5 whitespace-nowrap ${
-            activeView === 'scan' ? 'bg-wine-500 text-white' : 'text-stone-600'
-          }`}
-        >
-          <Scan className="w-3.5 h-3.5" /> Skener
         </button>
 
         <button

@@ -136,7 +136,7 @@ navigator.mediaDevices.getUserMedia = async (...args) => {
     assert page.locator('video').count() == 1
     page.get_by_role('button', name='Katalog (').click()
     page.wait_for_function("cameraTracks[1].readyState === 'ended'")
-    page.get_by_role('button', name='Skener', exact=True).click()
+    page.get_by_role('button', name='Přidat knihy', exact=True).click()
     page.get_by_role('button', name='Nahrát fotku ze zařízení', exact=True).click()
     upload_qr(page, invalid_isbn_qr)
     expect(page.get_by_text('Vyberte fotku s platným číselným ISBN o 10 nebo 13 číslicích.')).to_be_visible()

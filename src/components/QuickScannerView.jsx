@@ -8,9 +8,9 @@ import BookDetailModal from './BookDetailModal';
 import ExternalSyncConfigBanner from './ExternalSyncConfigBanner';
 import { Camera, Upload, Keyboard, AlertCircle, Loader2, Sparkles, Scan, ArrowRight, BookOpen, Bookmark, Search } from 'lucide-react';
 
-export default function QuickScannerView() {
+export default function QuickScannerView({ initialTab = 'camera' }) {
   const { currentUser, publicCatalog, readerCollections } = useApp();
-  const [activeTab, setActiveTab] = useState('camera'); // 'camera' | 'upload' | 'manual'
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [manualIsbn, setManualIsbn] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -191,7 +191,7 @@ export default function QuickScannerView() {
             Každá kniha má<br /><em className="text-wine-700">svůj příběh.</em>
           </h1>
           <p className="mt-4 max-w-md text-sm sm:text-base leading-relaxed text-stone-600">
-            Naskenujte ISBN, objevte knihu a najděte jí místo ve své knihovně.
+            Naskenujte ISBN nebo vyhledejte knihu podle názvu či autora.
           </p>
           <div className="mt-6 hidden sm:flex flex-wrap gap-x-5 gap-y-2 text-xs font-bold text-forest-700">
             <span className="flex items-center gap-1.5"><Scan className="w-4 h-4" /> Naskenovat</span>
@@ -213,6 +213,7 @@ export default function QuickScannerView() {
       <div className="library-tabs bg-white rounded-2xl border border-stone-200 p-2 shadow-sm grid grid-cols-2 sm:grid-cols-4 gap-2">
         <button
           onClick={() => setActiveTab('camera')}
+          aria-pressed={activeTab === 'camera'}
           className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
             activeTab === 'camera'
               ? 'bg-wine-700 text-white shadow-md'
@@ -224,6 +225,7 @@ export default function QuickScannerView() {
 
         <button
           onClick={() => setActiveTab('upload')}
+          aria-pressed={activeTab === 'upload'}
           className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
             activeTab === 'upload'
               ? 'bg-forest-700 text-white shadow-md'
@@ -235,6 +237,7 @@ export default function QuickScannerView() {
 
         <button
           onClick={() => setActiveTab('manual')}
+          aria-pressed={activeTab === 'manual'}
           className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
             activeTab === 'manual'
               ? 'bg-parchment-700 text-white shadow-md'
@@ -243,7 +246,7 @@ export default function QuickScannerView() {
         >
           <Keyboard className="w-4 h-4" /> Ruční zadání ISBN
         </button>
-        <button onClick={() => setActiveTab('search')} className={`py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 ${activeTab === 'search' ? 'bg-wine-700 text-white' : 'text-stone-600 hover:bg-stone-100'}`}>
+        <button onClick={() => setActiveTab('search')} aria-pressed={activeTab === 'search'} className={`py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 ${activeTab === 'search' ? 'bg-wine-700 text-white' : 'text-stone-600 hover:bg-stone-100'}`}>
           <Search className="w-4 h-4" /> Hledat podle názvu / autora
         </button>
       </div>
