@@ -150,7 +150,7 @@ export const AppProvider = ({ children }) => {
   };
 
   const updateBookInPublicCatalog = (updatedBook) => {
-    setPublicCatalog((prev) => prev.map(b => b.id === updatedBook.id ? updatedBook : b));
+    setPublicCatalog((prev) => prev.map(book => book.id === updatedBook.id ? { ...book, ...updatedBook } : book));
   };
 
   const deleteBookFromPublicCatalog = (bookId) => {
@@ -211,6 +211,16 @@ export const AppProvider = ({ children }) => {
     setReaderCollections((prev) => ({
       ...prev,
       [userId]: (prev[userId] || []).filter(b => b.id !== bookId)
+    }));
+  };
+
+  const updateBookInReaderCollection = (userId, bookId, changes) => {
+    if (currentUser?.id !== userId || !readerCollections[userId]?.some(book => book.id === bookId)) {
+      throw new Error('Kniha už ve sbírce není.');
+    }
+    setReaderCollections(prev => ({
+      ...prev,
+      [userId]: (prev[userId] || []).map(book => book.id === bookId ? { ...book, ...changes } : book)
     }));
   };
 
@@ -276,6 +286,7 @@ export const AppProvider = ({ children }) => {
         duplicateBookInPublicCatalog,
         readerCollections,
         addBookToReaderCollection,
+        updateBookInReaderCollection,
         removeBookFromReaderCollection,
         duplicateBookInReaderCollection,
         loans,

@@ -23,10 +23,12 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
   const {
     currentUser,
     publicCatalog,
+    updateBookInPublicCatalog,
     deleteBookFromPublicCatalog,
     duplicateBookInPublicCatalog,
     duplicateBookInReaderCollection,
     readerCollections,
+    updateBookInReaderCollection,
     removeBookFromReaderCollection,
     borrowBook
   } = useApp();
@@ -41,7 +43,14 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
   const [sortField, setSortField] = useState('title');
   const [sortOrder, setSortOrder] = useState('asc');
 
-  const [detailBook, setDetailBook] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const detailBook = detail?.userId === currentUser?.id ? detail?.book : null;
+  const canEditDetails = Boolean(currentUser && (isReaderOnly || isLibrarian));
+  const updateDetail = async (changes) => {
+    if (isReaderOnly) await updateBookInReaderCollection(currentUser.id, detailBook.id, changes);
+    else updateBookInPublicCatalog({ ...changes, id: detailBook.id });
+    setCopyMessage('Údaje o knize byly uloženy.');
+  };
   const [copyMessage, setCopyMessage] = useState('');
   const duplicateBook = (book) => {
     const copy = isReaderOnly
@@ -352,7 +361,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
                     <td className="py-3 px-4">
                       <button
                         type="button"
-                        onClick={() => setDetailBook(book)}
+                        onClick={() => setDetail({ book, userId: currentUser?.id })}
                         aria-label={`Zobrazit detail: ${book.title}`}
                         className="font-serif font-semibold text-stone-900 text-base leading-tight text-left hover:text-wine-700 hover:underline focus-visible:underline"
                       >{book.title}</button>
@@ -465,8 +474,9 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
       <BookDetailModal
         book={detailBook}
         isOpen={!!detailBook}
-        readOnly
-        onClose={() => setDetailBook(null)}
+        readOnly={!canEditDetails}
+        onUpdate={canEditDetails ? updateDetail : undefined}
+        onClose={() => setDetail(null)}
       />
 
       {/* Borrow Modal for Librarian */}

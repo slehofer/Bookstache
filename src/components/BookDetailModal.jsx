@@ -20,7 +20,7 @@ import {
   Info
 } from 'lucide-react';
 
-export default function BookDetailModal({ book: incomingBook, isOpen, onClose, onSaved, readOnly = false }) {
+export default function BookDetailModal({ book: incomingBook, isOpen, onClose, onSaved, onUpdate, readOnly = false }) {
   const {
     currentUser, publicCatalog, readerCollections,
     addBookToPublicCatalog, addBookToReaderCollection,
@@ -28,15 +28,21 @@ export default function BookDetailModal({ book: incomingBook, isOpen, onClose, o
   } = useApp();
   const isLibrarian = currentUser?.role === 'librarian';
   const collection = isLibrarian ? publicCatalog : readerCollections[currentUser?.id];
-  const existingBook = isOpen && !readOnly && incomingBook && collection?.find(entry => sameBook(entry, incomingBook));
+  const showingDetails = readOnly || Boolean(onUpdate);
+  const existingBook = isOpen && !showingDetails && incomingBook && collection?.find(entry => sameBook(entry, incomingBook));
   const book = existingBook || incomingBook;
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(book || {});
   const [descriptionLoading, setDescriptionLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const descriptionEditedRef = useRef(false);
+  const editedFields = useRef(new Set());
 
   useEffect(() => {
     let cancelled = false;
+    setSaveError('');
+    editedFields.current.clear();
     descriptionEditedRef.current = false;
     setDescriptionLoading(false);
     if (book && isOpen) {
@@ -51,57 +57,68 @@ export default function BookDetailModal({ book: incomingBook, isOpen, onClose, o
         });
       }
       // Auto-enable edit mode if book details were not found automatically
-      if (!readOnly && !existingBook && !book.isFound) {
+      if (!showingDetails && !existingBook && !book.isFound) {
         setIsEditing(true);
       } else {
         setIsEditing(false);
       }
     }
     return () => { cancelled = true; };
-  }, [book, existingBook, isOpen, readOnly]);
+  }, [book, existingBook, isOpen, showingDetails]);
 
   if (!isOpen || !book) return null;
 
   const handleChange = (field, value) => {
+    editedFields.current.add(field);
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSaveBook = (e) => {
+  const handleSaveBook = async (e) => {
     e.preventDefault();
-    if (!currentUser) return;
+    if (!currentUser || saving || readOnly || (onUpdate && !isEditing)) return;
 
-    if (existingBook) {
-      const copy = isLibrarian ? duplicateBookInPublicCatalog(existingBook.id) : duplicateBookInReaderCollection(existingBook.id);
-      if (copy) {
-        onSaved?.(copy);
+    if (!existingBook && (!formData.title?.trim() || !formData.author?.trim())) {
+      setSaveError('Vyplňte název knihy a autora.');
+      return;
+    }
+
+    setSaving(true);
+    setSaveError('');
+    try {
+      if (onUpdate) {
+        const changes = Object.fromEntries([...editedFields.current].map(field => [
+          field, field === 'description' ? shortBookDescription(formData[field]) : String(formData[field]).trim()
+        ]));
+        if (changes.pages) changes.pages = Number(changes.pages);
+        if (Object.keys(changes).length) await onUpdate(changes);
+        onClose();
+        return;
+      }
+
+      let savedBook;
+      if (existingBook) {
+        savedBook = isLibrarian ? duplicateBookInPublicCatalog(existingBook.id) : await duplicateBookInReaderCollection(existingBook.id);
+      } else {
+        savedBook = {
+          ...book,
+          ...formData,
+          title: formData.title.trim(),
+          author: formData.author.trim(),
+          description: shortBookDescription(formData.description),
+          isFound: true
+        };
+        if (isLibrarian) addBookToPublicCatalog(savedBook);
+        else await addBookToReaderCollection(currentUser.id, savedBook);
+      }
+      if (savedBook) {
+        onSaved?.(savedBook);
         onClose();
       }
-      return;
+    } catch (error) {
+      setSaveError(error.message || 'Knihu se nepodařilo uložit.');
+    } finally {
+      setSaving(false);
     }
-
-    // Do not allow saving empty title/author
-    if (!formData.title?.trim() || !formData.author?.trim()) {
-      alert('Prosím vyplňte název knihy a autora.');
-      return;
-    }
-
-    const finalBook = {
-      ...book,
-      ...formData,
-      title: formData.title.trim(),
-      author: formData.author.trim(),
-      description: shortBookDescription(formData.description),
-      isFound: true // User confirmed/edited the details
-    };
-
-    if (isLibrarian) {
-      addBookToPublicCatalog(finalBook);
-    } else {
-      addBookToReaderCollection(currentUser.id, finalBook);
-    }
-
-    if (onSaved) onSaved(finalBook);
-    onClose();
   };
 
   return (
@@ -116,15 +133,16 @@ export default function BookDetailModal({ book: incomingBook, isOpen, onClose, o
             </div>
             <div>
               <h2 id="book-detail-title" className="text-xl font-bold">
-                {readOnly ? 'Detail knihy' : existingBook ? 'Kniha už je uložená' : book.isFound ? 'Nalezená kniha' : 'Kniha nenalezena v databázích'}
+                {showingDetails ? 'Detail knihy' : existingBook ? 'Kniha už je uložená' : book.isFound ? 'Nalezená kniha' : 'Kniha nenalezena v databázích'}
               </h2>
               {!existingBook && <p className="text-xs text-parchment-100">
-                {book.apiSource ? `Zdroj dat: ${book.apiSource}` : readOnly ? 'Informace o knize' : 'Můžete ručně doplnit potřebné údaje'}
+                {book.apiSource ? `Zdroj dat: ${book.apiSource}` : showingDetails ? 'Informace o knize' : 'Můžete ručně doplnit potřebné údaje'}
               </p>}
             </div>
           </div>
           <button
             onClick={onClose}
+            disabled={saving}
             className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
             title="Zavřít"
           >
@@ -155,7 +173,7 @@ export default function BookDetailModal({ book: incomingBook, isOpen, onClose, o
         )}
 
         {/* Not Found Warning Banner */}
-        {!readOnly && !existingBook && !book.isFound && (
+        {!showingDetails && !existingBook && !book.isFound && (
           <div className="bg-wine-100 border-b border-wine-200 p-3 px-6 text-xs text-wine-900 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-wine-600 shrink-0" />
             <p className="font-semibold">
@@ -206,13 +224,13 @@ export default function BookDetailModal({ book: incomingBook, isOpen, onClose, o
                   </div>
                 </div>
 
-                {!readOnly && !existingBook && <button
+                {!readOnly && !existingBook && !(onUpdate && isEditing) && <button
                   type="button"
                   onClick={() => setIsEditing(!isEditing)}
                   className="mt-3 text-xs font-semibold text-wine-700 hover:text-wine-800 bg-wine-100/70 hover:bg-wine-100 px-3 py-1.5 rounded-lg border border-wine-200 flex items-center gap-1.5 transition-colors"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
-                  {isEditing ? 'Ukončit úpravy' : 'Upravit zobrazené údaje'}
+                  {onUpdate ? 'Upravit údaje o knize' : isEditing ? 'Ukončit úpravy' : 'Upravit zobrazené údaje'}
                 </button>}
               </div>
 
@@ -222,10 +240,11 @@ export default function BookDetailModal({ book: incomingBook, isOpen, onClose, o
                 {/* Title & Author */}
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase">Název knihy *</label>
+                    <label htmlFor="book-title" className="block text-xs font-bold text-stone-500 uppercase">Název knihy *</label>
                     {isEditing ? (
                       <input
                         type="text"
+                        id="book-title"
                         required
                         placeholder="Zadejte název knihy"
                         value={formData.title ?? ''}
@@ -238,12 +257,13 @@ export default function BookDetailModal({ book: incomingBook, isOpen, onClose, o
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-stone-500 uppercase flex items-center gap-1">
+                    <label htmlFor="book-author" className="block text-xs font-bold text-stone-500 uppercase flex items-center gap-1">
                       <User className="w-3.5 h-3.5 text-wine-600" /> Autor / Autorka *
                     </label>
                     {isEditing ? (
                       <input
                         type="text"
+                        id="book-author"
                         required
                         placeholder="Zadejte jméno autora"
                         value={formData.author ?? ''}
@@ -336,22 +356,42 @@ export default function BookDetailModal({ book: incomingBook, isOpen, onClose, o
 
                   {/* Genre */}
                   <div className="sm:col-span-2">
-                    <label className="text-xs font-semibold text-stone-500 flex items-center gap-1 mb-1">
+                    <label htmlFor="book-genre" className="text-xs font-semibold text-stone-500 flex items-center gap-1 mb-1">
                       <Tag className="w-3.5 h-3.5 text-forest-600" /> Žánr / Kategorie
                     </label>
                     {isEditing ? (
                       <input
                         type="text"
+                        id="book-genre"
                         value={formData.genre ?? ''}
                         onChange={(e) => handleChange('genre', e.target.value)}
                         className="w-full p-1.5 border border-stone-300 rounded-md text-xs bg-white"
                       />
                     ) : (
                       <span className="font-semibold text-parchment-900 bg-parchment-100 px-2 py-0.5 rounded-md text-xs border border-parchment-300">
-                        {formData.genre || 'Beletrie'}
+                        {formData.genre || 'Neuveden'}
                       </span>
                     )}
                   </div>
+
+                  {onUpdate && (
+                    <div>
+                      <label htmlFor="book-pages" className="mb-1 block text-xs font-semibold text-stone-500">Počet stran</label>
+                      {isEditing ? (
+                        <input
+                          id="book-pages"
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={formData.pages ?? ''}
+                          onChange={(e) => handleChange('pages', e.target.value)}
+                          className="w-full rounded-md border border-stone-300 bg-white p-1.5 text-xs"
+                        />
+                      ) : (
+                        <span className="font-semibold text-stone-800">{formData.pages || 'Neuveden'}</span>
+                      )}
+                    </div>
+                  )}
 
                 </div>
 
@@ -391,24 +431,27 @@ export default function BookDetailModal({ book: incomingBook, isOpen, onClose, o
             </div>
 
             {/* Actions */}
+            {saveError && <p role="alert" className="mt-4 text-sm font-semibold text-wine-800">{saveError}</p>}
             <div className="mt-6 pt-4 border-t border-stone-200 flex flex-col sm:flex-row items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={onClose}
+                disabled={saving}
                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-stone-300 font-semibold text-stone-700 hover:bg-stone-100 text-sm transition-colors"
               >
-                {readOnly ? 'Zavřít detail' : 'Zrušit'}
+                {showingDetails && !isEditing ? 'Zavřít detail' : 'Zrušit'}
               </button>
 
-              {!readOnly && <button
+              {!readOnly && (!onUpdate || isEditing) && <button
                 type="submit"
+                disabled={saving}
                 className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
                   isLibrarian
                     ? 'bg-wine-600 hover:bg-wine-700 shadow-wine-600/20'
                     : 'bg-forest-600 hover:bg-forest-700 shadow-forest-600/20'
                 }`}
               >
-                {existingBook ? (
+                {saving ? 'Ukládám…' : onUpdate ? 'Uložit změny' : existingBook ? (
                   <>
                     <PlusCircle className="w-4 h-4" /> Uložit další výtisk
                   </>
