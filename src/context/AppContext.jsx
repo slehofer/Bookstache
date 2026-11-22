@@ -7,50 +7,67 @@ const AppContext = createContext();
 export const DEFAULT_USERS = [
   {
     id: 'user-librarian-1',
-    username: 'knihovnik',
-    name: 'Eva Procházková',
+    name: 'Ukázkový profil',
     role: 'librarian',
-    email: 'knihovnice@knihovna.cz',
     avatar: '👩‍💼'
   },
   {
     id: 'user-reader-1',
-    username: 'jan.novak',
-    name: 'Jan Novák',
+    name: 'Čtenář 1',
     role: 'reader',
-    email: 'jan.novak@email.cz',
     avatar: '👨‍🎓'
   },
   {
     id: 'user-reader-2',
-    username: 'petra.k',
-    name: 'Petra Králová',
+    name: 'Čtenář 2',
     role: 'reader',
-    email: 'petra.kralova@seznam.cz',
     avatar: '👩‍🎨'
   }
 ];
+
+function localProfile(user) {
+  if (typeof user?.id !== 'string' || !user.id) return null;
+  const demo = DEFAULT_USERS.find(profile => profile.id === user.id);
+  if (demo) return demo;
+  if (user.role !== 'librarian' && user.role !== 'reader') return null;
+  return {
+    id: user.id,
+    role: user.role,
+    name: 'Místní profil',
+    avatar: user.role === 'librarian' ? '👩‍💼' : '📖'
+  };
+}
+
+function withoutProfileAttribution({ addedBy, ...book }) {
+  return book;
+}
 
 export const AppProvider = ({ children }) => {
   // Current user state
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem('bookstache_user');
-    return saved ? JSON.parse(saved) : DEFAULT_USERS[0];
+    if (!saved) return DEFAULT_USERS[0];
+    try {
+      return localProfile(JSON.parse(saved));
+    } catch {
+      return null;
+    }
   });
 
   // Main shared library catalog
   const [publicCatalog, setPublicCatalog] = useState(() => {
     const saved = localStorage.getItem('bookstache_public_catalog');
-    return saved ? JSON.parse(saved) : INITIAL_MOCK_BOOKS;
+    return (saved ? JSON.parse(saved) : INITIAL_MOCK_BOOKS).map(withoutProfileAttribution);
   });
 
   // Reader personal collections: { userId: [Book] }
   const [readerCollections, setReaderCollections] = useState(() => {
     const saved = localStorage.getItem('bookstache_reader_collections');
-    return saved ? JSON.parse(saved) : {
+    const collections = saved ? JSON.parse(saved) : {
       'user-reader-1': [INITIAL_MOCK_BOOKS[1], INITIAL_MOCK_BOOKS[3]],
       'user-reader-2': [INITIAL_MOCK_BOOKS[0]]
     };
+    return Object.fromEntries(Object.entries(collections).map(([id, books]) => [id, books.map(withoutProfileAttribution)]));
   });
 
   // Active Loans list
@@ -62,7 +79,7 @@ export const AppProvider = ({ children }) => {
         bookId: 'book-9788073816216',
         bookTitle: 'Malý princ',
         borrowerName: 'Jan Novák',
-        borrowerEmail: 'jan.novak@email.cz',
+        borrowerEmail: 'jan.novak@example.com',
         borrowedDate: '2025-02-01',
         dueDate: '2025-03-01',
         returned: false
@@ -85,7 +102,8 @@ export const AppProvider = ({ children }) => {
 
   // Persistence
   useEffect(() => {
-    localStorage.setItem('bookstache_user', JSON.stringify(currentUser));
+    const profile = currentUser && { id: currentUser.id, role: currentUser.role };
+    localStorage.setItem('bookstache_user', JSON.stringify(profile));
   }, [currentUser]);
 
   useEffect(() => {
@@ -106,7 +124,7 @@ export const AppProvider = ({ children }) => {
 
   // Actions
   const loginUser = (user) => {
-    setCurrentUser(user);
+    setCurrentUser(localProfile(user));
   };
 
   const logoutUser = () => {
@@ -124,7 +142,8 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const addBookToPublicCatalog = (newBook) => {
+  const addBookToPublicCatalog = (book) => {
+    const newBook = withoutProfileAttribution(book);
     setPublicCatalog((prev) => [newBook, ...prev.filter(b => b.id !== newBook.id)]);
     triggerExternalSync(newBook, 'knihovnik');
   };
@@ -137,7 +156,8 @@ export const AppProvider = ({ children }) => {
     setPublicCatalog((prev) => prev.filter(b => b.id !== bookId));
   };
 
-  const addBookToReaderCollection = (userId, book) => {
+  const addBookToReaderCollection = (userId, newBook) => {
+    const book = withoutProfileAttribution(newBook);
     setReaderCollections((prev) => {
       const userList = prev[userId] || [];
       if (userList.some(b => b.id === book.id || (book.isbn && b.isbn === book.isbn))) {
@@ -158,7 +178,6 @@ export const AppProvider = ({ children }) => {
     id: `copy-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`,
     duplicatedFrom: book.duplicatedFrom || book.id,
     createdAt: new Date().toISOString(),
-    addedBy: currentUser.name,
     isAvailable: true,
     borrowedBy: null,
     dueDate: null

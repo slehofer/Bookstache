@@ -1,3 +1,8 @@
+const BOOK_SOURCES = new Set([
+  'Knihovny.cz', 'Knihovny.cz API', 'Open Library', 'Open Library API',
+  'Google Books', 'Google Books API', 'Váš katalog', 'Místní databáze', 'Ruční vložení'
+]);
+
 export function validateExternalEndpoint(value) {
   if (!value?.trim()) return '';
   let url;
@@ -37,7 +42,7 @@ export async function sendBookToExternalEndpoint(endpointUrl, book, role) {
       language: book.language,
       genre: book.genre,
       pages: book.pages,
-      addedBy: book.addedBy || role
+      addedBy: BOOK_SOURCES.has(book.apiSource) ? book.apiSource : 'Bookstache'
     }
   };
 

@@ -23,11 +23,15 @@ with sync_playwright() as p:
         page = context.new_page()
         errors = []
         page.on('pageerror', lambda error: errors.append(str(error)))
-        user = {'id': 'copy-user', 'name': 'Test', 'role': role}
+        user = {
+            'id': 'copy-user', 'name': 'Legacy Profile Name',
+            'username': 'legacy.profile', 'email': 'legacy.profile@example.com', 'role': role
+        }
+        old_book = {**original, 'addedBy': user['name']}
         seed = {
             'bookstache_user': user,
-            'bookstache_public_catalog': [original, without_isbn],
-            'bookstache_reader_collections': {'copy-user': [original, without_isbn], 'other-user': [original]},
+            'bookstache_public_catalog': [old_book, without_isbn],
+            'bookstache_reader_collections': {'copy-user': [old_book, without_isbn], 'other-user': [old_book]},
             'bookstache_loans': []
         }
         page.add_init_script('''if (!localStorage.getItem('duplicate-test-seeded')) {
@@ -46,6 +50,12 @@ with sync_playwright() as p:
         context.route('http://bookstache.test/Bookstache/**', serve)
         view = 'catalog' if role == 'librarian' else 'my-collection'
         page.goto('http://bookstache.test/Bookstache/#' + view)
+        expect(page.locator('tbody tr')).to_have_count(2)
+        profile = page.evaluate("JSON.parse(localStorage.getItem('bookstache_user'))")
+        assert profile == {'id': user['id'], 'role': role}
+        stored = page.evaluate("""() => ['bookstache_public_catalog', 'bookstache_reader_collections']
+            .map(key => localStorage.getItem(key)).join(' ')""")
+        assert user['name'] not in stored and 'addedBy' not in stored
         for title in [original['title'], original['title'], without_isbn['title']]:
             page.get_by_role('button', name='Duplikovat knihu: ' + title, exact=True).first.click()
         expect(page.locator('tbody tr')).to_have_count(5)
@@ -91,7 +101,24 @@ with sync_playwright() as p:
             page.evaluate("window.location.hash = 'catalog'")
             expect(page.get_by_role('heading', name='Kompletní katalog knihovny')).to_be_visible()
             expect(page.get_by_role('button', name='Duplikovat knihu:', exact=False)).to_have_count(0)
+        page.get_by_role('button', name='Přepnout profil', exact=True).click()
+        dialog = page.get_by_role('dialog', name='Místní profily')
+        expect(dialog).to_be_visible()
+        expect(dialog.locator('input')).to_have_count(0)
+        dialog.get_by_role('button', name='Vytvořit místní profil', exact=True).click()
+        expect(dialog.locator('input')).to_have_count(0)
+        if role == 'librarian':
+            dialog.get_by_role('button', name='Knihovník', exact=False).click()
+        dialog.get_by_role('button', name='Použít místní profil', exact=True).click()
+        expect(dialog).not_to_be_visible()
+        anonymous = page.evaluate("JSON.parse(localStorage.getItem('bookstache_user'))")
+        assert anonymous['id'].startswith('user-custom-')
+        assert anonymous == {'id': anonymous['id'], 'role': role}
+        page.reload()
+        expect(page.get_by_role('button', name='Přepnout profil', exact=True)).to_be_visible()
+        assert page.evaluate("JSON.parse(localStorage.getItem('bookstache_user'))") == anonymous
         assert not errors, errors
         print(f'PASS: {role}: unique copies with same ISBN, independent loan state, deletion, persistence, mobile action, role access')
+        print(f'PASS: {role}: legacy profile data removed, books preserved, new profile stores only ID and role')
         context.close()
     browser.close()

@@ -42,7 +42,7 @@ export default function BookSearch() {
   };
   const add = (book) => {
     if (!currentUser || collection.some(other => sameBook(book, other))) return;
-    const saved = { ...book, addedBy: currentUser.name, createdAt: new Date().toISOString() };
+    const saved = { ...book, createdAt: new Date().toISOString() };
     if (currentUser.role === 'librarian') addBookToPublicCatalog(saved);
     else addBookToReaderCollection(currentUser.id, saved);
     setMessage(`Kniha „${book.title}“ byla přidána ${currentUser.role === 'librarian' ? 'do veřejného katalogu' : 'do vaší sbírky'}.`);
@@ -102,7 +102,7 @@ export default function BookSearch() {
         </div>
       </form>}
     </div>
-    {!currentUser && <p className="text-sm text-wine-700">Pro přidání knihy do sbírky se přihlaste.</p>}
+    {!currentUser && <p className="text-sm text-wine-700">Pro přidání knihy do sbírky vyberte profil.</p>}
     <div role="status" aria-live="polite" className="text-sm text-forest-700">
       {loading && 'Hledám knihy…'}{message}
       {result && <p>Nalezeno knih: {result.books.length}{result.books.length === 0 && '. Zkuste jiný název nebo autora, případně vložte knihu ručně.'}</p>}

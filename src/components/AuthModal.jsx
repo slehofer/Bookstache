@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { DEFAULT_USERS, useApp } from '../context/AppContext';
-import { UserCheck, Shield, BookOpen, UserPlus, LogIn, Sparkles } from 'lucide-react';
+import { UserCheck, Shield, BookOpen, UserPlus, LogIn, Sparkles, X } from 'lucide-react';
 
 export default function AuthModal({ isOpen, onClose }) {
   const { loginUser } = useApp();
   const [activeTab, setActiveTab] = useState('select'); // 'select' | 'custom'
-  const [customName, setCustomName] = useState('');
   const [customRole, setCustomRole] = useState('reader');
-  const [customEmail, setCustomEmail] = useState('');
 
   if (!isOpen) return null;
 
@@ -18,32 +16,24 @@ export default function AuthModal({ isOpen, onClose }) {
 
   const handleCreateCustomUser = (e) => {
     e.preventDefault();
-    if (!customName.trim()) return;
-
-    const newUser = {
-      id: `user-custom-${Date.now()}`,
-      username: customName.toLowerCase().replace(/\s+/g, '.'),
-      name: customName,
-      role: customRole,
-      email: customEmail || `${customName.toLowerCase().replace(/\s+/g, '.')}@knihovna-user.cz`,
-      avatar: customRole === 'librarian' ? '👩‍💼' : '📖'
-    };
-
-    loginUser(newUser);
-    onClose();
+    const id = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    handleSelectUser({ id: `user-custom-${id}`, role: customRole });
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fadeIn">
+    <div role="dialog" aria-modal="true" aria-labelledby="local-profile-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-2xl border border-parchment-200 w-full max-w-lg overflow-hidden">
         {/* Header with Orange/Green Branding */}
         <div className="bg-forest-800 border-b-4 border-parchment-400 p-6 text-white text-center relative">
+          <button type="button" onClick={onClose} aria-label="Zavřít" className="absolute right-4 top-4 p-1.5 rounded-full hover:bg-white/20">
+            <X className="w-5 h-5" />
+          </button>
           <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl mx-auto flex items-center justify-center mb-3 shadow-inner">
             <Sparkles className="w-9 h-9 text-parchment-100" />
           </div>
-          <h2 className="text-2xl font-bold">Přihlášení do Bookstache</h2>
+          <h2 id="local-profile-title" className="text-2xl font-bold">Místní profily</h2>
           <p className="text-parchment-100 text-sm mt-1">
-            Vyberte si profil pro přístup ke službám knihovny
+            Profily a sbírky se ukládají v tomto prohlížeči.
           </p>
         </div>
 
@@ -58,7 +48,7 @@ export default function AuthModal({ isOpen, onClose }) {
             }`}
           >
             <UserCheck className="w-4 h-4" />
-            Rychlé účty (Demo)
+            Ukázkové profily
           </button>
           <button
             onClick={() => setActiveTab('custom')}
@@ -69,7 +59,7 @@ export default function AuthModal({ isOpen, onClose }) {
             }`}
           >
             <UserPlus className="w-4 h-4" />
-            Vytvořit účet
+            Vytvořit místní profil
           </button>
         </div>
 
@@ -108,7 +98,6 @@ export default function AuthModal({ isOpen, onClose }) {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-stone-500 mt-0.5">{user.email}</p>
                       <p className="text-xs text-stone-600 mt-1 italic">
                         {user.role === 'librarian'
                           ? 'Okamžité skenování, správa celého katalogu a výpůjček'
@@ -123,39 +112,13 @@ export default function AuthModal({ isOpen, onClose }) {
           ) : (
             <form onSubmit={handleCreateCustomUser} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  Jméno a příjmení
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="např. Marie Svobodová"
-                  value={customName}
-                  onChange={(e) => setCustomName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-wine-500 focus:border-transparent text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 mb-1">
-                  E-mailová adresa (volitelné)
-                </label>
-                <input
-                  type="email"
-                  placeholder="marie@seznam.cz"
-                  value={customEmail}
-                  onChange={(e) => setCustomEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-wine-500 focus:border-transparent text-sm"
-                />
-              </div>
-
-              <div>
                 <label className="block text-xs font-semibold text-stone-700 mb-2">
                   Role v aplikaci
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
+                    aria-pressed={customRole === 'reader'}
                     onClick={() => setCustomRole('reader')}
                     className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all ${
                       customRole === 'reader'
@@ -173,6 +136,7 @@ export default function AuthModal({ isOpen, onClose }) {
 
                   <button
                     type="button"
+                    aria-pressed={customRole === 'librarian'}
                     onClick={() => setCustomRole('librarian')}
                     className={`p-3 rounded-xl border text-left flex flex-col gap-1 transition-all ${
                       customRole === 'librarian'
@@ -195,7 +159,7 @@ export default function AuthModal({ isOpen, onClose }) {
                   type="submit"
                   className="w-full py-3 px-4 bg-wine-600 hover:bg-wine-700 text-white font-bold rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 text-sm"
                 >
-                  <LogIn className="w-4 h-4" /> Vstoupit do aplikace
+                  <LogIn className="w-4 h-4" /> Použít místní profil
                 </button>
               </div>
             </form>

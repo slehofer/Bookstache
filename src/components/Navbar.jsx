@@ -161,7 +161,7 @@ export default function Navbar({ activeView, setActiveView, onOpenAuthModal }) {
                   <button
                     onClick={onOpenAuthModal}
                     className="p-1.5 hover:bg-parchment-100 rounded-xl text-stone-600 transition-colors"
-                    title="Přepnout profil / změnit roli"
+                  title="Přepnout profil"
                   >
                     <UserCheck className="w-4 h-4 text-wine-600" />
                   </button>
@@ -170,7 +170,7 @@ export default function Navbar({ activeView, setActiveView, onOpenAuthModal }) {
                 <button
                   onClick={logoutUser}
                   className="p-2 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors"
-                  title="Odhlásit se"
+                  title="Ukončit místní profil"
                 >
                   <LogOut className="w-5 h-5" />
                 </button>
@@ -181,7 +181,7 @@ export default function Navbar({ activeView, setActiveView, onOpenAuthModal }) {
                 className="px-4 py-2.5 bg-wine-600 hover:bg-wine-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors flex items-center gap-2"
               >
                 <LogIn className="w-4 h-4" />
-                Přihlásit se
+                Vybrat profil
               </button>
             )}
           </div>

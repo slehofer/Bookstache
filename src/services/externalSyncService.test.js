@@ -19,6 +19,7 @@ test('rejects document links, development URLs and unsafe addresses before sendi
 });
 
 test('Apps Script uses a simple POST and requires explicit write acknowledgement', async (t) => {
+  const legacyBook = { ...book, apiSource: 'Open Library API', addedBy: 'Legacy Profile Name', email: 'private@example.com' };
   t.mock.method(globalThis, 'fetch', async (url, options) => {
     assert.equal(url, endpoint);
     assert.equal(options.method, 'POST');
@@ -27,10 +28,12 @@ test('Apps Script uses a simple POST and requires explicit write acknowledgement
     const payload = JSON.parse(options.body);
     assert.equal(payload.book.isbn, book.isbn);
     assert.equal('description' in payload.book, false);
+    assert.equal(payload.book.addedBy, 'Open Library API');
+    assert.doesNotMatch(options.body, /Legacy Profile Name|private@example\.com/);
     assert.equal(payload.userRole, 'knihovnik');
     return new Response(JSON.stringify({ ok: true }));
   });
-  assert.equal((await sendBookToExternalEndpoint(` ${endpoint} `, book, 'knihovnik')).ok, true);
+  assert.equal((await sendBookToExternalEndpoint(` ${endpoint} `, legacyBook, 'knihovnik')).ok, true);
 });
 
 test('HTTP failures, application failures, login pages and network errors never report success', async (t) => {
@@ -49,9 +52,10 @@ test('HTTP failures, application failures, login pages and network errors never 
 test('generic webhooks retain JSON requests and accept successful HTTP status', async (t) => {
   t.mock.method(globalThis, 'fetch', async (_url, options) => {
     assert.equal(options.headers['Content-Type'], 'application/json');
+    assert.equal(JSON.parse(options.body).book.addedBy, 'Bookstache');
     return new Response(null, { status: 204 });
   });
-  assert.equal((await sendBookToExternalEndpoint('https://example.com/hook', book)).ok, true);
+  assert.equal((await sendBookToExternalEndpoint('https://example.com/hook', { ...book, apiSource: 'Legacy Profile Name' })).ok, true);
 });
 
 test('provided Apps Script writes a text row under a lock and acknowledges only completed writes', async () => {
