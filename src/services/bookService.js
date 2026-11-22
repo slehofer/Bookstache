@@ -207,7 +207,10 @@ export function parseKnihovnyRecord(record, targetIsbn13) {
     year,
     targetAgeGroup: 'Mládež a dospělí (12+)',
     language: 'Čeština',
-    genre: 'Knihovny.cz katalog',
+    genre: (Array.isArray(record.subjects) ? record.subjects : [])
+      .filter(subject => subject?.type === 'genre/form')
+      .map(subject => cleanPunctuation(subject.heading?.[0]))
+      .find(Boolean) || '',
     pages,
     description: shortBookDescription(record.summary) || shortBookDescription(record.description),
     coverUrl: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80',
@@ -334,7 +337,7 @@ async function performIsbnLookup(code) {
   // 3. Knihovny.cz API
   const API_FIELDS = [
     'id', 'title', 'authors', 'publishers', 'placesOfPublication',
-    'publicationDates', 'physicalDescriptions', 'isbns', 'issns', 'cnb', 'formats', 'summary'
+    'publicationDates', 'physicalDescriptions', 'isbns', 'issns', 'cnb', 'formats', 'summary', 'subjects'
   ];
   const params = new URLSearchParams({ lookfor: isbn13, type: 'ISN', limit: '10' });
   for (const f of API_FIELDS) params.append('field[]', f);

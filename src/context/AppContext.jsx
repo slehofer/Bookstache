@@ -38,7 +38,8 @@ function localProfile(user) {
   };
 }
 
-function withoutProfileAttribution({ addedBy, ...book }) {
+function normalizeStoredBook({ addedBy, ...book }) {
+  if (book.genre === 'Knihovny.cz katalog') book.genre = '';
   return book;
 }
 
@@ -57,7 +58,7 @@ export const AppProvider = ({ children }) => {
   // Main shared library catalog
   const [publicCatalog, setPublicCatalog] = useState(() => {
     const saved = localStorage.getItem('bookstache_public_catalog');
-    return (saved ? JSON.parse(saved) : INITIAL_MOCK_BOOKS).map(withoutProfileAttribution);
+    return (saved ? JSON.parse(saved) : INITIAL_MOCK_BOOKS).map(normalizeStoredBook);
   });
 
   // Reader personal collections: { userId: [Book] }
@@ -67,7 +68,7 @@ export const AppProvider = ({ children }) => {
       'user-reader-1': [INITIAL_MOCK_BOOKS[1], INITIAL_MOCK_BOOKS[3]],
       'user-reader-2': [INITIAL_MOCK_BOOKS[0]]
     };
-    return Object.fromEntries(Object.entries(collections).map(([id, books]) => [id, books.map(withoutProfileAttribution)]));
+    return Object.fromEntries(Object.entries(collections).map(([id, books]) => [id, books.map(normalizeStoredBook)]));
   });
 
   // Active Loans list
@@ -143,7 +144,7 @@ export const AppProvider = ({ children }) => {
   };
 
   const addBookToPublicCatalog = (book) => {
-    const newBook = withoutProfileAttribution(book);
+    const newBook = normalizeStoredBook(book);
     setPublicCatalog((prev) => [newBook, ...prev.filter(b => b.id !== newBook.id)]);
     triggerExternalSync(newBook, 'knihovnik');
   };
@@ -157,7 +158,7 @@ export const AppProvider = ({ children }) => {
   };
 
   const addBookToReaderCollection = (userId, newBook) => {
-    const book = withoutProfileAttribution(newBook);
+    const book = normalizeStoredBook(newBook);
     setReaderCollections((prev) => {
       const userList = prev[userId] || [];
       if (userList.some(b => b.id === book.id || (book.isbn && b.isbn === book.isbn))) {

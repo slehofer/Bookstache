@@ -63,7 +63,7 @@ async function openLibrarySearch(term, field, signal) {
 
 async function knihovnySearch(term, field, signal) {
   const params = new URLSearchParams({ lookfor: term, type: field === 'title' ? 'Title' : field === 'author' ? 'Author' : 'AllFields', limit: '20' });
-  for (const name of ['id', 'title', 'authors', 'publishers', 'publicationDates', 'physicalDescriptions', 'isbns', 'summary']) params.append('field[]', name);
+  for (const name of ['id', 'title', 'authors', 'publishers', 'publicationDates', 'physicalDescriptions', 'isbns', 'summary', 'subjects']) params.append('field[]', name);
   const data = await readJson(`https://www.knihovny.cz/api/v1/search?${params}`, signal);
   if (!Array.isArray(data.records)) throw new Error('Invalid Knihovny.cz response');
   return data.records.filter(record => record.id && record.title).map(record => {

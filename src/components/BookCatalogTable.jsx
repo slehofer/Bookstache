@@ -370,7 +370,7 @@ export default function BookCatalogTable({ isReaderOnly = false }) {
                     {/* Genre */}
                     <td className="py-3 px-4 hidden lg:table-cell">
                       <span className="inline-block px-2 py-0.5 bg-parchment-100 text-parchment-900 font-bold rounded-md border border-parchment-300">
-                        {book.genre}
+                        {book.genre || 'Neuveden'}
                       </span>
                     </td>
 

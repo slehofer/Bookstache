@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import {
   convertToIsbn13,
   cleanPunctuation,
@@ -53,6 +54,13 @@ function runTests() {
   };
 
   const parsed = parseKnihovnyRecord(sampleResponse, '9788025703670');
+  const subjects = [
+    { type: 'topic', heading: ['Literatura a společnost'] },
+    { type: 'genre/form', heading: ['Životopisy'] }
+  ];
+  assert.equal(parsed.genre, '');
+  assert.equal(parsed.apiSource, 'Knihovny.cz API');
+  assert.equal(parseKnihovnyRecord({ ...sampleResponse, subjects }, '9788025703670').genre, 'Životopisy');
   console.assert(parsed.title === 'Životy slavných a starých provensálských básníků, kteří žili v dobách hrabat z kraje Provença', 'Title mismatch');
   console.assert(parsed.author === 'Jean de Nostredame', `Author mismatch: got ${parsed.author}`);
   console.assert(parsed.publisher === 'Argo', `Publisher mismatch: got ${parsed.publisher}`);

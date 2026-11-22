@@ -342,7 +342,7 @@ export default function BookDetailModal({ book: incomingBook, isOpen, onClose, o
                     {isEditing ? (
                       <input
                         type="text"
-                        value={formData.genre ?? 'Beletrie'}
+                        value={formData.genre ?? ''}
                         onChange={(e) => handleChange('genre', e.target.value)}
                         className="w-full p-1.5 border border-stone-300 rounded-md text-xs bg-white"
                       />
